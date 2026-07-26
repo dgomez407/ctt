@@ -7,7 +7,7 @@
 - `self-package` subcommand and core API to bundle CTT's own codebase into a `.txt`-only cross-domain transfer package.
 - Zero-dependency Python bootstrap restoration script (`src/controlled_text_transfer/bootstrap.py`) embedded in self-packages for initial deployment on unequipped destination hosts.
 - `bootstrap` subcommand in `scripts/run.sh` to generate self-bootstrapping transfer archives.
-- Live dynamic Shields.io metrics badges (PyPI version, monthly downloads, Python versions, and GitHub license) on `README.md`.
+- Live dynamic Shields.io metrics badges (PyPI version, PyPI license, Python versions, CI build status, Black, Ruff, mypy strict, and Bandit security scan) on `README.md`.
 - PyPI package URLs in `pyproject.toml` metadata and direct installation runbooks in `README.md`, `README-quickstart.md`, and `docs/operations.md`.
 - `release` and `unrelease` subcommands in `scripts/run.sh` to automate release preflight alignment, metadata validation, quality gates, git tagging, and local rollback operations.
 - Offline release snapshot validation helper (`scripts/ctt-release-check.sh`).

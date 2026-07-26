@@ -3,6 +3,11 @@
 [![PyPI Version](https://img.shields.io/pypi/v/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
 [![PyPI License](https://img.shields.io/pypi/l/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
+[![CI](https://img.shields.io/github/actions/workflow/status/dgomez407/ctt/ci.yml?branch=main&label=CI)](https://github.com/dgomez407/ctt/actions)
+[![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/types-Mypy%20Strict-blue)](https://mypy-lang.org/)
+[![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
 Controlled Text Transfer (`ctt`) prepares an allowlisted set of text files for
 a controlled transfer that accepts only `.txt` names. It appends `.txt`,
