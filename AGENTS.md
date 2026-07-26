@@ -18,6 +18,8 @@ Run all commands from the repository root.
 - `bash scripts/run.sh check` runs tests, Ruff, Black, mypy, and Bandit.
 - `bash scripts/run.sh report` generates indexed API and quality reports.
 - `bash scripts/run.sh build` builds the optional standalone executable.
+- `bash scripts/run.sh release <version>` aligns version metadata, verifies quality, commits, and tags a release.
+- `bash scripts/run.sh unrelease <version>` removes local tag and resets local release commit.
 - `bash scripts/run.sh clean --dry-run` previews repository cleanup.
 - `bash scripts/run.sh clean --environment` removes `.venv` with an external Python.
 - `bash scripts/run.sh help` lists all dispatcher commands.

@@ -96,6 +96,8 @@ Other dispatcher commands are:
 bash scripts/run.sh setup
 bash scripts/run.sh report
 bash scripts/run.sh build
+bash scripts/run.sh release 0.1.1
+bash scripts/run.sh unrelease 0.1.1
 bash scripts/run.sh clean --dry-run
 bash scripts/run.sh clean --environment
 bash scripts/run.sh help

@@ -63,6 +63,8 @@ ctt diff ./transfer ./source --json
 | `uv run --extra dev pytest` | Install missing development tools and run all tests |
 | `bash scripts/run.sh check` | Run the complete local quality gate |
 | `bash scripts/run.sh report` | Generate browsable API, coverage, quality, and security reports |
+| `bash scripts/run.sh release VERSION` | Align version metadata, verify quality, commit, and tag release |
+| `bash scripts/run.sh unrelease VERSION` | Remove local tag and reset release commit for a version |
 
 Use `--dry-run` with `prepare` or `restore` to inspect the operation without
 writing. Use `--log-json` for machine-readable audit events. Directory format

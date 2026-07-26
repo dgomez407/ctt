@@ -34,7 +34,7 @@ def test_run_script_help_lists_supported_commands():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("Usage: bash scripts/run.sh COMMAND [ARGS...]\n")
-    for command in ("setup", "test", "check", "report", "build", "clean"):
+    for command in ("setup", "test", "check", "report", "build", "release", "unrelease", "clean"):
         assert command in result.stdout
 
 

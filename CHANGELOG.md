@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- `release` and `unrelease` subcommands in `scripts/run.sh` to automate release preflight alignment, metadata validation, quality gates, git tagging, and local rollback operations.
+- Offline release snapshot validation helper (`scripts/ctt-release-check.sh`).
+- Comprehensive subcommand, flag, and utility reference guide in `scripts/README.md`.
+- Architecture Decision Record [ADR-013](docs/decisions/0013-release-alignment-and-rollback-operations.md) for release alignment and unrelease operations.
+
 ## [0.1.0] - 2026-07-25
 
 ### Added
