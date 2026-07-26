@@ -626,6 +626,14 @@ def preflight(source: Path, policy: Policy) -> PreflightReport:
     return report
 
 
+def _clean_archive_root_name(path: Path) -> str:
+    name = path.name
+    for suffix in (".tar.gz", ".tgz", ".zip", ".tar"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
 def _resolve_package_destination(destination: Path, fmt: str) -> Path:
     if fmt not in PACKAGE_SUFFIXES:
         return destination
@@ -657,8 +665,9 @@ def _package(
                 if p.is_file():
                     zf.write(p, p.relative_to(transfer))
     elif fmt in {"tar", "tgz"}:
+        arc_root = root_name or _clean_archive_root_name(archive or transfer)
         with tarfile.open(archive, "w:gz" if fmt == "tgz" else "w") as tf:
-            tf.add(transfer, arcname=root_name or transfer.name)
+            tf.add(transfer, arcname=arc_root)
     return archive
 
 
@@ -923,7 +932,7 @@ def prepare(
                     stage,
                     policy.package_format,
                     archive=stage_archive,
-                    root_name=transfer.name,
+                    root_name=_clean_archive_root_name(transfer),
                 )
             if final_archive is None:
                 stage.replace(transfer)

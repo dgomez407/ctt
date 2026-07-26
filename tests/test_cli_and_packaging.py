@@ -63,6 +63,18 @@ def test_tar_archives_contain_canonical_package_layout(
     assert f"{package.name}/payload/nested/a.py.txt" in names
 
 
+def test_tgz_archive_root_dir_omits_suffix(tmp_path: Path):
+    source = _source_with_file(tmp_path)
+    package = tmp_path / "ctt-bootstrap.tgz"
+
+    prepare(source, package, Policy(package_format="tgz"))
+
+    with tarfile.open(package, "r:gz") as archive:
+        names = set(archive.getnames())
+    assert "ctt-bootstrap/ctt-manifest.json.txt" in names
+    assert "ctt-bootstrap.tgz/ctt-manifest.json.txt" not in names
+
+
 def test_cli_accepts_readme_policy_option_after_prepare_arguments(tmp_path: Path, capsys):
     source = _source_with_file(tmp_path)
     package = tmp_path / "package"
