@@ -548,6 +548,17 @@ def _content_reasons(text: str, policy: Policy, profile: CDSProfile) -> list[str
     return reasons
 
 
+def _rejected_decision(rel: str, reasons: list[str]) -> PreflightDecision:
+    return PreflightDecision(
+        path=rel,
+        transfer_path=(Path("payload") / (rel + ".txt")).as_posix(),
+        status="rejected",
+        reasons=reasons,
+        size=0,
+        transformations=[],
+    )
+
+
 def _scan_source(
     source: Path, policy: Policy
 ) -> tuple[PreflightReport, dict[str, bytes], dict[str, int]]:
@@ -568,37 +579,15 @@ def _scan_source(
     for path in paths:
         if _is_link(path):
             rel = path.relative_to(source).as_posix()
-            reasons = ["symlink_not_allowed"]
-            if _ignored(rel, patterns):
-                reasons = ["ignored"]
-            decisions.append(
-                PreflightDecision(
-                    path=rel,
-                    transfer_path=(Path("payload") / (rel + ".txt")).as_posix(),
-                    status="rejected",
-                    reasons=reasons,
-                    size=0,
-                    transformations=[],
-                )
-            )
+            reasons = ["ignored"] if _ignored(rel, patterns) else ["symlink_not_allowed"]
+            decisions.append(_rejected_decision(rel, reasons))
             continue
         try:
             rel_path = _safe_relative(source, path)
         except TransferError:
             rel = path.relative_to(source).as_posix()
-            reasons = ["path_escapes_root"]
-            if _ignored(rel, patterns):
-                reasons = ["ignored"]
-            decisions.append(
-                PreflightDecision(
-                    path=rel,
-                    transfer_path=(Path("payload") / (rel + ".txt")).as_posix(),
-                    status="rejected",
-                    reasons=reasons,
-                    size=0,
-                    transformations=[],
-                )
-            )
+            reasons = ["ignored"] if _ignored(rel, patterns) else ["path_escapes_root"]
+            decisions.append(_rejected_decision(rel, reasons))
             continue
         rel = rel_path.as_posix()
         before = path.stat()
@@ -680,9 +669,12 @@ def preflight(source: Path, policy: Policy) -> PreflightReport:
     return report
 
 
+KNOWN_ARCHIVE_SUFFIXES: tuple[str, ...] = (".tar.gz", ".tgz", ".zip", ".tar")
+
+
 def _clean_archive_root_name(path: Path) -> str:
     name = path.name
-    for suffix in (".tar.gz", ".tgz", ".zip", ".tar"):
+    for suffix in KNOWN_ARCHIVE_SUFFIXES:
         if name.endswith(suffix):
             return name[: -len(suffix)]
     return name
@@ -691,15 +683,15 @@ def _clean_archive_root_name(path: Path) -> str:
 def _resolve_package_destination(destination: Path, fmt: str) -> Path:
     if fmt not in PACKAGE_SUFFIXES:
         return destination
-    suffix = PACKAGE_SUFFIXES[fmt]
+    target_suffix = PACKAGE_SUFFIXES[fmt]
     dest_str = str(destination)
-    if dest_str.endswith(suffix):
+    if dest_str.endswith(target_suffix):
         return destination
-    for old_suffix in (".tar.gz", ".tgz", ".zip", ".tar"):
+    for old_suffix in KNOWN_ARCHIVE_SUFFIXES:
         if dest_str.endswith(old_suffix):
             dest_str = dest_str[: -len(old_suffix)]
             break
-    return Path(dest_str + suffix)
+    return Path(dest_str + target_suffix)
 
 
 def _package(
@@ -1242,6 +1234,18 @@ def _find_bootstrap_file(pkg_root: Path) -> Optional[Path]:
     return None
 
 
+def _resolve_self_package_root(source: Optional[Path]) -> Path:
+    if source is not None:
+        return source.resolve()
+    cwd = Path.cwd().resolve()
+    if (cwd / "pyproject.toml").is_file() or (cwd / "src" / "controlled_text_transfer").is_dir():
+        return cwd
+    p2 = Path(__file__).resolve().parents[2]
+    if (p2 / "pyproject.toml").is_file():
+        return p2
+    return cwd
+
+
 def self_package(
     destination: Path,
     source: Optional[Path] = None,
@@ -1264,20 +1268,7 @@ def self_package(
             f"got: {policy.hash_algorithm}"
         )
 
-    if source is not None:
-        pkg_root = source.resolve()
-    else:
-        cwd = Path.cwd().resolve()
-        if (cwd / "pyproject.toml").is_file() or (
-            cwd / "src" / "controlled_text_transfer"
-        ).is_dir():
-            pkg_root = cwd
-        else:
-            pkg_root = Path(__file__).resolve().parents[2]
-            if not (pkg_root / "pyproject.toml").is_file():
-                pkg_root = Path(__file__).resolve().parents[1]
-            if not (pkg_root / "pyproject.toml").is_file():
-                pkg_root = cwd
+    pkg_root = _resolve_self_package_root(source)
 
     if package_format in PACKAGE_SUFFIXES:
         destination = _resolve_package_destination(destination, package_format)

@@ -103,21 +103,21 @@ def test_self_package_fallback_resolution(monkeypatch: pytest.MonkeyPatch, tmp_p
     # Mock cwd to non-repo directory so cwd pyproject.toml check is False
     monkeypatch.chdir(tmp_path)
 
-    # Mock Path.is_file to return False for pyproject.toml
+    # Test parent resolution hit
+    m1, created1 = self_package(tmp_path / "fallback1.zip", package_format="zip")
+    assert created1.is_file()
+
+    # Mock Path.is_file to test final cwd fallback
     orig_is_file = Path.is_file
-    checks = 0
 
     def mock_is_file(self: Path) -> bool:
-        nonlocal checks
         if self.name == "pyproject.toml":
-            checks += 1
-            if checks <= 3:
-                return False
+            return False
         return orig_is_file(self)
 
     monkeypatch.setattr(Path, "is_file", mock_is_file)
-    m, created = self_package(tmp_path / "fallback_deep.zip", package_format="zip")
-    assert created.is_file()
+    m2, created2 = self_package(tmp_path / "fallback2.zip", package_format="zip")
+    assert created2.is_file()
 
 
 def test_find_bootstrap_file_none(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
