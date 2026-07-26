@@ -811,6 +811,7 @@ def prepare(
     signer: Optional[ManifestSigner] = None,
     key_label: str = "external-managed-key",
     logger: Optional[logging.Logger] = None,
+    is_self_package: bool = False,
 ) -> Manifest:
     """Create one staged, self-verified transfer artifact.
 
@@ -886,6 +887,10 @@ def prepare(
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 dst.write_bytes(captured[rec.original_path])
             manifest.write(stage / "ctt-manifest.json.txt")
+            if is_self_package:
+                bootstrap_file = Path(__file__).resolve().parent / "bootstrap.py"
+                if bootstrap_file.is_file():
+                    (stage / "bootstrap.py.txt").write_bytes(bootstrap_file.read_bytes())
             if signer is not None:
                 sign_manifest(
                     stage / "ctt-manifest.json.txt",
@@ -1181,5 +1186,6 @@ def self_package(
         strict=False,
         signer=signer,
         logger=logger,
+        is_self_package=True,
     )
     return manifest, destination

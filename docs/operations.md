@@ -37,7 +37,7 @@ When transferring CTT to an isolated destination network that does not yet have 
    On the destination host (which has Python 3.12+ installed but no CTT package):
    ```text
    unzip ctt-bootstrap.zip -d /tmp/ctt-bootstrap
-   python /tmp/ctt-bootstrap/src/controlled_text_transfer/bootstrap.py /tmp/ctt-bootstrap /opt/ctt
+   python /tmp/ctt-bootstrap/bootstrap.py.txt /tmp/ctt-bootstrap /opt/ctt
    ```
 
 4. **Install CTT**:

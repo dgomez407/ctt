@@ -93,8 +93,9 @@ def restore_bootstrap(package_source: Path, destination: Path) -> Path:
 def _restore_from_dir(package_dir: Path, staging: Path) -> None:
     manifest_path = package_dir / "ctt-manifest.json.txt"
     if not manifest_path.is_file():
-        # Fall back to root search
-        candidates = list(package_dir.rglob("ctt-manifest.json.txt"))
+        candidates = list(package_dir.rglob("ctt-manifest.json.txt")) or list(
+            package_dir.parent.rglob("ctt-manifest.json.txt")
+        )
         if not candidates:
             raise BootstrapError("manifest ctt-manifest.json.txt not found in package")
         manifest_path = candidates[0]

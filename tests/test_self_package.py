@@ -19,8 +19,10 @@ def test_self_package_creates_zip_and_restores_via_bootstrap(tmp_path: Path):
     assert len(manifest.files) > 0
 
     with zipfile.ZipFile(target_zip, "r") as z:
-        for name in z.namelist():
+        names = z.namelist()
+        for name in names:
             assert name.endswith(".txt") or name.endswith("/")
+        assert any(n.endswith("bootstrap.py.txt") for n in names)
 
     restored_dest = tmp_path / "restored_ctt"
     restore_bootstrap(target_zip, restored_dest)
