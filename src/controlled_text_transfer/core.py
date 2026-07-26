@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 import stat
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -888,8 +889,8 @@ def prepare(
                 dst.write_bytes(captured[rec.original_path])
             manifest.write(stage / "ctt-manifest.json.txt")
             if is_self_package:
-                bootstrap_file = Path(__file__).resolve().parent / "bootstrap.py"
-                if bootstrap_file.is_file():
+                bootstrap_file = _find_bootstrap_file(source)
+                if bootstrap_file is not None and bootstrap_file.is_file():
                     (stage / "bootstrap.py.txt").write_bytes(bootstrap_file.read_bytes())
             if signer is not None:
                 sign_manifest(
@@ -1151,8 +1152,23 @@ def restore(
     return manifest
 
 
+def _find_bootstrap_file(pkg_root: Path) -> Optional[Path]:
+    candidates = [
+        Path(__file__).resolve().parent / "bootstrap.py",
+        pkg_root / "src" / "controlled_text_transfer" / "bootstrap.py",
+    ]
+    mei_pass = getattr(sys, "_MEIPASS", None)
+    if mei_pass:
+        candidates.insert(0, Path(mei_pass) / "controlled_text_transfer" / "bootstrap.py")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def self_package(
     destination: Path,
+    source: Optional[Path] = None,
     *,
     package_format: str = "zip",
     policy: Optional[Policy] = None,
@@ -1166,9 +1182,20 @@ def self_package(
     else:
         policy.package_format = package_format
 
-    pkg_root = Path(__file__).resolve().parents[2]
-    if not (pkg_root / "pyproject.toml").is_file():
-        pkg_root = Path(__file__).resolve().parents[1]
+    if source is not None:
+        pkg_root = source.resolve()
+    else:
+        cwd = Path.cwd().resolve()
+        if (cwd / "pyproject.toml").is_file() or (
+            cwd / "src" / "controlled_text_transfer"
+        ).is_dir():
+            pkg_root = cwd
+        else:
+            pkg_root = Path(__file__).resolve().parents[2]
+            if not (pkg_root / "pyproject.toml").is_file():
+                pkg_root = Path(__file__).resolve().parents[1]
+            if not (pkg_root / "pyproject.toml").is_file():
+                pkg_root = cwd
 
     if package_format in PACKAGE_SUFFIXES:
         suffix = PACKAGE_SUFFIXES[package_format]

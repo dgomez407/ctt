@@ -85,6 +85,9 @@ def _parser() -> argparse.ArgumentParser:
         "destination", type=Path, help="new self-bootstrap package path"
     )
     self_package_parser.add_argument(
+        "--source", type=Path, help="source directory to package (default: current directory)"
+    )
+    self_package_parser.add_argument(
         "--format",
         default="zip",
         choices=["directory", "zip", "tar", "tar.gz"],
@@ -181,6 +184,7 @@ def main(
         if args.command == "self-package":
             m, _ = self_package(
                 args.destination,
+                source=args.source,
                 package_format=args.format,
                 policy=policy,
                 signer=signer,

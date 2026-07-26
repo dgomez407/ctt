@@ -12,7 +12,7 @@ where it changes behavior:
 | Command | Supported options |
 | --- | --- |
 | `prepare` | `--policy`, `--log-json`, `--dry-run`, `--strict`, `--json-report`, `--sign`, `--key-label` |
-| `self-package` | `--policy`, `--log-json`, `--format`, `--dry-run` |
+| `self-package` | `--policy`, `--log-json`, `--source`, `--format`, `--dry-run` |
 | `preflight` | `--policy`, `--json` |
 | `verify` | `--log-json`, `--require-signature`, `--allow-unverified-signature` |
 | `restore` | `--log-json`, `--dry-run`, `--require-signature`, `--allow-unverified-signature` |
@@ -50,6 +50,7 @@ uv run ctt prepare ./source ./transfer --policy ./ctt.yaml --strict --json-repor
 | Option | How and why to use it |
 | --- | --- |
 | `--policy PATH` | Apply a YAML compatibility/content policy. Example: `--policy ctt.yaml`. |
+| `--source PATH` | Select source directory to package (default: current directory). |
 | `--format FORMAT` | Select package output format (`zip`, `directory`, `tar`, `tar.gz`). Default: `zip`. |
 | `--dry-run` | Check what can be packaged without creating output. |
 | `--log-json` | Emit the completion audit event as JSON on stderr. |

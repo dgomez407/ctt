@@ -1,3 +1,4 @@
+import sys
 import zipfile
 from pathlib import Path
 
@@ -66,17 +67,50 @@ def test_self_package_options_and_error_handling(tmp_path: Path):
         self_package(tmp_path / "invalid", package_format="invalid")
 
 
-def test_self_package_fallback_pkg_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_self_package_with_explicit_source_and_meipass(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from controlled_text_transfer.core import _find_bootstrap_file
+
+    # Test explicit source parameter
+    m, created = self_package(tmp_path / "explicit_src.zip", source=ROOT, package_format="zip")
+    assert created.is_file()
+
+    # Test MEIPASS mock
+    fake_mei = tmp_path / "mei"
+    mei_bootstrap_dir = fake_mei / "controlled_text_transfer"
+    mei_bootstrap_dir.mkdir(parents=True)
+    fake_bootstrap = mei_bootstrap_dir / "bootstrap.py"
+    fake_bootstrap.write_bytes(b"# mei bootstrap\n")
+
+    monkeypatch.setattr(sys, "_MEIPASS", str(fake_mei), raising=False)
+    found = _find_bootstrap_file(ROOT)
+    assert found == fake_bootstrap
+
+
+def test_self_package_fallback_resolution(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    # Mock cwd to non-repo directory so cwd pyproject.toml check is False
+    monkeypatch.chdir(tmp_path)
+
+    # Mock Path.is_file to return False for pyproject.toml
     orig_is_file = Path.is_file
-    first_check = True
+    checks = 0
 
     def mock_is_file(self: Path) -> bool:
-        nonlocal first_check
-        if self.name == "pyproject.toml" and first_check:
-            first_check = False
-            return False
+        nonlocal checks
+        if self.name == "pyproject.toml":
+            checks += 1
+            if checks <= 3:
+                return False
         return orig_is_file(self)
 
     monkeypatch.setattr(Path, "is_file", mock_is_file)
-    m, created = self_package(tmp_path / "fallback.zip", package_format="zip")
+    m, created = self_package(tmp_path / "fallback_deep.zip", package_format="zip")
     assert created.is_file()
+
+
+def test_find_bootstrap_file_none(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    from controlled_text_transfer.core import _find_bootstrap_file
+
+    monkeypatch.setattr(Path, "is_file", lambda self: False)
+    assert _find_bootstrap_file(tmp_path) is None

@@ -24,6 +24,7 @@ EXPECTED_OPTIONS = {
         "--help",
         "--policy",
         "--log-json",
+        "--source",
         "--format",
         "--dry-run",
     },
