@@ -19,6 +19,16 @@ generated files from being mistaken for source.
 
 ## Initial Deployment & Self-Bootstrapping
 
+### Online Networks (PyPI Installation)
+
+For destination networks with internet access, install directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
+```bash
+pip install controlled-text-transfer
+```
+
+### Air-Gapped / Offline Networks (Self-Bootstrapping)
+
 When transferring CTT to an isolated destination network that does not yet have CTT installed:
 
 1. **Self-Package on Source Network**:

@@ -1,5 +1,10 @@
 # Controlled Text Transfer 0.1.0
 
+[![PyPI Version](https://img.shields.io/pypi/v/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-dgomez407%2Fctt-blue?logo=github)](https://github.com/dgomez407/ctt)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/)
+
 Controlled Text Transfer (`ctt`) prepares an allowlisted set of text files for
 a controlled transfer that accepts only `.txt` names. It appends `.txt`,
 preserves content and paths in a signed-ready JSON manifest, adds an optional
@@ -43,8 +48,13 @@ dependencies.
 
 ## Quick start
 
+Install official releases directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
 ```bash
+pip install controlled-text-transfer
+# Or install from source:
 python -m pip install .
+
 ctt prepare ./source ./transfer --policy ctt.yaml
 ctt preflight ./source --policy ctt.yaml --json
 ctt verify ./transfer

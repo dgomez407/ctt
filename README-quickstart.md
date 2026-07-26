@@ -1,8 +1,12 @@
 # Controlled Text Transfer Quick Start
 
-Run these commands from the repository root. `uv` creates and manages the
-Python 3.12-or-newer environment automatically; no separate installation is
-required.
+Install official packages directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
+```bash
+pip install controlled-text-transfer
+```
+
+For development, `uv` creates and manages the Python 3.12-or-newer environment automatically from the repository root:
 
 ## Show the CLI
 

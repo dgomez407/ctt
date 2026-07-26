@@ -27,6 +27,7 @@ def test_publication_metadata_identifies_license_platform_and_project_urls():
     assert "Operating System :: OS Independent" in project["classifiers"]
     assert project["urls"] == {
         "Homepage": "https://github.com/dgomez407/ctt",
+        "PyPI": "https://pypi.org/project/controlled-text-transfer/",
         "Repository": "https://github.com/dgomez407/ctt",
         "Issues": "https://github.com/dgomez407/ctt/issues",
         "Changelog": "https://github.com/dgomez407/ctt/blob/main/CHANGELOG.md",
