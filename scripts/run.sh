@@ -27,6 +27,16 @@ usage_detailed() {
     usage_summary
     cat <<'EOF'
 
+Check Usage:
+  bash scripts/run.sh check (Recommended before opening PRs)
+
+  Runs the full pre-PR quality gate:
+  - pytest (enforcing 100% coverage)
+  - Ruff (linting)
+  - Black (formatting)
+  - mypy (strict type checking)
+  - Bandit (security scanning)
+
 Bootstrap Usage:
   bash scripts/run.sh bootstrap [output_path]
 

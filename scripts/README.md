@@ -14,7 +14,7 @@ All primary operations are dispatched through `bash scripts/run.sh COMMAND [ARGS
 | :--- | :--- | :--- | :--- |
 | `setup` | `bash scripts/run.sh setup` | Install locked development dependencies | Accepts `uv sync` options |
 | `test` | `bash scripts/run.sh test [args]` | Run pytest suite with concise output | Accepts pytest flags/paths (e.g. `-k`) |
-| `check` | `bash scripts/run.sh check` | Execute complete 5-stage quality gate | Rejects extra arguments |
+| `check` | `bash scripts/run.sh check` | Execute complete 5-stage quality gate (Recommended before opening PRs) | Rejects extra arguments |
 | `report` | `bash scripts/run.sh report [flags]` | Generate indexed HTML/JSON quality & API dashboard | `--pydoc-only`, `--output PATH` |
 | `build` | `bash scripts/run.sh build [args]` | Build standalone binary via PyInstaller | Accepts PyInstaller options |
 | `bootstrap` | `bash scripts/run.sh bootstrap [path]` | Package CTT into a .txt-only self-bootstrapping bundle | Optional output path (default: `dist/ctt-bootstrap.zip`) |
@@ -48,8 +48,8 @@ bash scripts/run.sh test tests/test_release.py
 bash scripts/run.sh test -k "release"
 ```
 
-### `check` — Execute Quality Gate
-Runs the repository's mandatory 5-stage quality gate in sequence:
+### `check` — Execute Quality Gate (Recommended Before Opening PRs)
+Runs the repository's mandatory 5-stage quality gate in sequence prior to opening Pull Requests:
 1. `pytest` test suite with 100% statement coverage enforcement.
 2. `ruff` code linting and import checks.
 3. `black` code formatting verification.
@@ -57,6 +57,7 @@ Runs the repository's mandatory 5-stage quality gate in sequence:
 5. `bandit` security scanning (`src/`, `scripts/`).
 
 ```bash
+# Recommended pre-PR verification gate
 bash scripts/run.sh check
 ```
 
