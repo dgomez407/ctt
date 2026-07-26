@@ -1,0 +1,46 @@
+# Conservative baseline policy. Customize and review before each transfer.
+allowlist:
+  extensions:
+    - .py
+    - .md
+    - .rst
+    - .txt
+    - .yaml
+    - .yml
+    - .json
+    - .toml
+    - .ini
+    - .cfg
+    - .conf
+    - .sh
+    - .ps1
+    - .js
+    - .ts
+    - .tsx
+    - .jsx
+    - .css
+    - .html
+    - .xml
+    - .sql
+    - .csv
+  names:
+    - Dockerfile
+    - Makefile
+    - LICENSE
+    - NOTICE
+    - README
+add_bom: true
+hash_algorithm: sha256
+max_bytes: 10485760
+package_format: directory
+ignore_file: .cttignore
+profile: generic-text-v1
+max_total_bytes: 104857600
+max_files: 10000
+max_path_depth: 32
+max_path_length: 240
+max_filename_length: 120
+max_line_length: 10000
+allow_unicode: true
+allow_mixed_line_endings: false
+prohibited_patterns: []

@@ -1,0 +1,118 @@
+# Operational Runbook
+
+[Documentation index](README.md) | [Repository home](../README.md)
+
+## Generate Review Reports
+
+Run `bash scripts/run.sh report` to create `reports/index.html` with pydoc API
+pages, coverage and JUnit results, Ruff, MyPy, and Bandit findings, the resolved
+dependency tree, Black formatting status, and runtime metadata. The command returns nonzero when a
+reported quality check fails but retains its diagnostic files.
+
+Use `bash scripts/run.sh report --pydoc-only` when only API documentation and
+runtime metadata are needed. Generated reports are ignored by Git and removed
+by `bash scripts/run.sh clean`.
+
+`--output PATH` may target a directory outside the repository. Repository-local
+output is restricted to the top-level `reports/` directory to prevent
+generated files from being mistaken for source.
+
+## Prepare
+
+1. Review `ctt.yaml` and `.cttignore`.
+   See the [policy reference](policy.md) for field semantics and examples.
+2. Run preflight and retain its machine-readable report:
+
+   ```text
+   ctt preflight SOURCE --policy ctt.yaml --json
+   ```
+
+3. Create the package, using `--strict` when every candidate must pass:
+
+   ```text
+   ctt prepare SOURCE TRANSFER --policy ctt.yaml --strict \
+     --json-report preflight.json --log-json
+   ```
+
+4. Record the manifest and audit output according to the local procedure.
+
+## Transfer and verify
+
+After the package crosses the approved boundary, verify it before restoration:
+
+```text
+ctt verify TRANSFER
+```
+
+`TRANSFER` may be the canonical directory, ZIP, TAR, or TAR.GZ artifact.
+Packages declaring a signature require a trusted verifier automatically.
+Use `--require-signature` to reject unsigned packages too. The explicit
+`--allow-unverified-signature` override performs integrity-only verification.
+
+If a detached signature is used, verify it with the approved external GPG,
+X.509, HSM, or enterprise tooling before accepting the package.
+
+## Review changes
+
+Compare the package with a source directory without changing either input:
+
+```text
+ctt diff TRANSFER SOURCE --json
+```
+
+Review `added`, `removed`, `modified`, and `unchanged` categories. A modified
+or removed source file may be expected if the source changed after preparation;
+it should never be silently ignored.
+
+## Restore
+
+Restore into a new directory:
+
+```text
+ctt restore TRANSFER RESTORED
+```
+
+The command verifies transfer hashes, restores into a sibling staging
+directory, removes only the transport-added BOM, restores the original BOM
+state and ordinary permission bits where supported, and validates every staged
+file before atomically publishing the destination.
+
+## Archive formats
+
+Set `package_format` to one of `directory`, `zip`, `tar`, or `tar.gz`.
+Directory format publishes the requested directory. Archive formats publish
+only the corresponding archive after verifying its temporary canonical
+layout. Every artifact must still be scanned by surrounding controls.
+
+## Failure handling
+
+- Do not rerun restore into an existing destination.
+- A failed restore removes staging and leaves the requested destination absent.
+- Preserve the failed package and manifest for investigation.
+- Treat checksum, traversal, unexpected-file, and signature failures as
+  integrity failures, not as ordinary warnings.
+- Do not disable allowlists, size limits, or external scanning to force a
+  transfer through.
+- Treat `generic-text-v1` as a compatibility baseline, not proof that a
+  particular CDS will authorize the transfer.
+
+## Development environment cleanup
+
+Run `bash scripts/run.sh clean --dry-run` before cleanup to review every
+target. Run `bash scripts/run.sh clean` to remove repository-local build
+outputs, coverage data, bytecode, package metadata, and test/lint/type-check
+caches.
+
+The default preserves `.venv`. Removing it requires
+`bash scripts/run.sh clean --environment`. The dispatcher selects the first
+`python` on `PATH` outside the project environment and falls back to uv only
+when no default Python exists; the action fails safely if its selected
+interpreter is inside the target.
+Shared uv cache data is intentionally out of scope. Use `uv cache clean` only
+as a separate, deliberate system-maintenance operation because it affects
+other projects.
+
+Removing `.venv` also removes pytest, Ruff, Black, MyPy, Bandit, and other
+development-only tools. Restore them with `uv sync --extra dev`, or run the
+complete tests directly with `uv run --extra dev pytest`. Without the extra,
+`uv run pytest` may report `program not found` in a newly created environment.

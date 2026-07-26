@@ -1,0 +1,18 @@
+allowlist:
+  extensions: [.py, .md, .yaml, .json, .toml, .sh]
+  names: [README, LICENSE, Dockerfile]
+add_bom: true
+hash_algorithm: sha256
+max_bytes: 10485760
+package_format: directory  # directory, zip, tar, tar.gz
+ignore_file: .cttignore
+profile: generic-text-v1
+max_total_bytes: 104857600
+max_files: 10000
+max_path_depth: 32
+max_path_length: 240
+max_filename_length: 120
+max_line_length: 10000
+allow_unicode: true
+allow_mixed_line_endings: false
+prohibited_patterns: []
