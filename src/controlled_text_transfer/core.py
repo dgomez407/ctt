@@ -492,10 +492,30 @@ def _ignored(rel: str, patterns: Iterable[str]) -> bool:
     )
 
 
+DEFAULT_IGNORE_PATTERNS = [
+    ".git/*",
+    ".venv/*",
+    "*__pycache__/*",
+    "*.py[cod]",
+    ".pytest_cache/*",
+    ".mypy_cache/*",
+    ".ruff_cache/*",
+    ".coverage",
+    "dist/*",
+    "build/*",
+    "reports/*",
+    "*.egg-info/*",
+]
+
+
 def _read_patterns(source: Path, filename: str) -> list[str]:
     path = source / filename
     if not path.is_file():
-        return []
+        example_path = source / f"{filename}.example"
+        if example_path.is_file():
+            path = example_path
+        else:
+            return list(DEFAULT_IGNORE_PATTERNS)
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
 
 
@@ -546,10 +566,44 @@ def _scan_source(
         path for path in source.rglob("*") if path.is_file() and path.name != policy.ignore_file
     )
     for path in paths:
-        rel = _safe_relative(source, path).as_posix()
+        if _is_link(path):
+            rel = path.relative_to(source).as_posix()
+            reasons = ["symlink_not_allowed"]
+            if _ignored(rel, patterns):
+                reasons = ["ignored"]
+            decisions.append(
+                PreflightDecision(
+                    path=rel,
+                    transfer_path=(Path("payload") / (rel + ".txt")).as_posix(),
+                    status="rejected",
+                    reasons=reasons,
+                    size=0,
+                    transformations=[],
+                )
+            )
+            continue
+        try:
+            rel_path = _safe_relative(source, path)
+        except TransferError:
+            rel = path.relative_to(source).as_posix()
+            reasons = ["path_escapes_root"]
+            if _ignored(rel, patterns):
+                reasons = ["ignored"]
+            decisions.append(
+                PreflightDecision(
+                    path=rel,
+                    transfer_path=(Path("payload") / (rel + ".txt")).as_posix(),
+                    status="rejected",
+                    reasons=reasons,
+                    size=0,
+                    transformations=[],
+                )
+            )
+            continue
+        rel = rel_path.as_posix()
         before = path.stat()
         size = before.st_size
-        reasons: list[str] = []
+        reasons = []
         if _ignored(rel, patterns):
             reasons.append("ignored")
         if size > policy.max_bytes:
