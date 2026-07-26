@@ -24,6 +24,21 @@ def _bash() -> str:
     return bash
 
 
+def test_run_script_no_args_lists_concise_commands():
+    result = subprocess.run(
+        [_bash(), "scripts/run.sh"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("Usage: bash scripts/run.sh COMMAND [ARGS...]\n")
+    assert "Bootstrap Usage:" not in result.stdout
+    assert "Release Usage:" not in result.stdout
+    assert "Unrelease Usage:" not in result.stdout
+
+
 def test_run_script_help_lists_supported_commands():
     result = subprocess.run(
         [_bash(), "scripts/run.sh", "help"],
@@ -34,6 +49,9 @@ def test_run_script_help_lists_supported_commands():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("Usage: bash scripts/run.sh COMMAND [ARGS...]\n")
+    assert "Bootstrap Usage:" in result.stdout
+    assert "Release Usage:" in result.stdout
+    assert "Unrelease Usage:" in result.stdout
     for command in (
         "setup",
         "test",

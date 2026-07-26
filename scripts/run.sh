@@ -5,7 +5,7 @@ set -euo pipefail
 repository="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repository"
 
-usage() {
+usage_summary() {
     cat <<'EOF'
 Usage: bash scripts/run.sh COMMAND [ARGS...]
 
@@ -19,7 +19,13 @@ Commands:
   release    Align version, validate metadata, check quality, commit, and tag release
   unrelease  Remove local tag and reset release commit for a version
   clean      Remove generated repository artifacts
-  help       Show this help
+  help       Show detailed help and subcommand usage
+EOF
+}
+
+usage_detailed() {
+    usage_summary
+    cat <<'EOF'
 
 Bootstrap Usage:
   bash scripts/run.sh bootstrap [output_path]
@@ -72,10 +78,13 @@ raise SystemExit(executable == environment or environment in executable.parents)
     return 1
 }
 
-command="${1:-help}"
-if (($#)); then
-    shift
+if ((!$#)); then
+    usage_summary
+    exit 0
 fi
+
+command="$1"
+shift
 
 case "$command" in
     setup)
@@ -220,11 +229,11 @@ readme_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         exec uv run python scripts/clean.py "$@"
         ;;
     help|-h|--help)
-        usage
+        usage_detailed
         ;;
     *)
         printf 'error: unknown command: %s\n' "$command" >&2
-        usage >&2
+        usage_summary >&2
         exit 2
         ;;
 esac
