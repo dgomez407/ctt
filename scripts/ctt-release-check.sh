@@ -74,7 +74,7 @@ snapshot="$(
         'import tempfile; print(tempfile.mkdtemp(prefix="ctt-release-check-"))'
 )"
 if command -v cygpath >/dev/null 2>&1; then
-    snapshot="$(cygpath -u "$snapshot")"
+    snapshot="$(cygpath -m "$snapshot")"
 fi
 cleanup() {
     "$python_command" -c \

@@ -1204,6 +1204,12 @@ def self_package(
     else:
         policy.package_format = package_format
 
+    if policy.hash_algorithm not in {"sha256", "sha512"}:
+        raise TransferError(
+            f"self-package requires standard library hash algorithm ('sha256' or 'sha512'), "
+            f"got: {policy.hash_algorithm}"
+        )
+
     if source is not None:
         pkg_root = source.resolve()
     else:

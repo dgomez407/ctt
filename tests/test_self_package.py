@@ -6,7 +6,7 @@ import pytest
 
 from controlled_text_transfer.bootstrap import restore_bootstrap
 from controlled_text_transfer.cli import main as cli_main
-from controlled_text_transfer.core import self_package
+from controlled_text_transfer.core import Policy, TransferError, self_package
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -125,3 +125,11 @@ def test_find_bootstrap_file_none(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
     monkeypatch.setattr(Path, "is_file", lambda self: False)
     assert _find_bootstrap_file(tmp_path) is None
+
+
+def test_self_package_rejects_non_standard_hash_algorithm(tmp_path: Path):
+    invalid_policy = Policy(hash_algorithm="blake3")
+    with pytest.raises(
+        TransferError, match="self-package requires standard library hash algorithm"
+    ):
+        self_package(tmp_path / "blake3_pkg.zip", policy=invalid_policy)
