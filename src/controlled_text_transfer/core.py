@@ -1144,3 +1144,42 @@ def restore(
     if logger:
         logger.info("restore_complete", extra={"files": len(manifest.files), "dry_run": dry_run})
     return manifest
+
+
+def self_package(
+    destination: Path,
+    *,
+    package_format: str = "zip",
+    policy: Optional[Policy] = None,
+    signer: Optional[ManifestSigner] = None,
+    dry_run: bool = False,
+    logger: Optional[logging.Logger] = None,
+) -> tuple[Manifest, Path]:
+    """Package the CTT codebase into a .txt-only self-bootstrapping transfer bundle."""
+    if policy is None:
+        policy = Policy(package_format=package_format)
+    else:
+        policy.package_format = package_format
+
+    pkg_root = Path(__file__).resolve().parents[2]
+    if not (pkg_root / "pyproject.toml").is_file():
+        pkg_root = Path(__file__).resolve().parents[1]
+
+    if package_format in PACKAGE_SUFFIXES:
+        suffix = PACKAGE_SUFFIXES[package_format]
+        dest_str = str(destination)
+        if not dest_str.endswith(suffix):
+            destination = Path(dest_str + suffix)
+    elif package_format != "directory":
+        raise TransferError(f"unsupported package format: {package_format}")
+
+    manifest = prepare(
+        pkg_root,
+        destination,
+        policy,
+        dry_run=dry_run,
+        strict=False,
+        signer=signer,
+        logger=logger,
+    )
+    return manifest, destination

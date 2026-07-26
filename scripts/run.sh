@@ -15,10 +15,17 @@ Commands:
   check      Run tests, linting, formatting, typing, and security checks
   report     Generate pydoc, coverage, test, quality, security, and dependency reports
   build      Build the optional standalone executable
+  bootstrap  Build .txt-only self-bootstrapping transfer bundle
   release    Align version, validate metadata, check quality, commit, and tag release
   unrelease  Remove local tag and reset release commit for a version
   clean      Remove generated repository artifacts
   help       Show this help
+
+Bootstrap Usage:
+  bash scripts/run.sh bootstrap [output_path]
+
+  Packages CTT into a .txt-only self-bootstrapping bundle containing embedded bootstrap.py.txt
+  (default: dist/ctt-bootstrap.zip)
 
 Release Usage:
   bash scripts/run.sh release <version>
@@ -196,6 +203,15 @@ readme_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         printf '\nUnreleased %s locally.\n' "$tag"
         printf 'If the tag was already pushed to remote origin, remove it with:\n'
         printf '  git push origin :refs/tags/%s\n' "$tag"
+        ;;
+    bootstrap)
+        output_path="${1:-dist/ctt-bootstrap.zip}"
+        if (($# > 1)); then
+            printf 'error: bootstrap accepts at most one output_path argument\n' >&2
+            exit 2
+        fi
+        mkdir -p "$(dirname "$output_path")"
+        exec uv run ctt self-package "$output_path"
         ;;
     clean)
         if python="$(default_python)"; then

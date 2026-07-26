@@ -96,6 +96,7 @@ Other dispatcher commands are:
 bash scripts/run.sh setup
 bash scripts/run.sh report
 bash scripts/run.sh build
+bash scripts/run.sh bootstrap dist/ctt-bootstrap.zip
 bash scripts/run.sh release 0.1.1
 bash scripts/run.sh unrelease 0.1.1
 bash scripts/run.sh clean --dry-run

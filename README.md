@@ -58,11 +58,13 @@ ctt diff ./transfer ./source --json
 |---|---|
 | `uv run ctt preflight SOURCE --json` | Produce a read-only compatibility report |
 | `uv run ctt prepare SOURCE TRANSFER --strict` | Build only when every candidate passes |
+| `uv run ctt self-package DESTINATION` | Build .txt-only self-bootstrapping CTT transfer bundle |
 | `uv run ctt verify TRANSFER` | Verify a directory or supported archive |
 | `uv run ctt restore TRANSFER DESTINATION` | Restore verified original files |
 | `uv run --extra dev pytest` | Install missing development tools and run all tests |
 | `bash scripts/run.sh check` | Run the complete local quality gate |
 | `bash scripts/run.sh report` | Generate browsable API, coverage, quality, and security reports |
+| `bash scripts/run.sh bootstrap [PATH]` | Package CTT into a .txt-only self-bootstrapping bundle |
 | `bash scripts/run.sh release VERSION` | Align version metadata, verify quality, commit, and tag release |
 | `bash scripts/run.sh unrelease VERSION` | Remove local tag and reset release commit for a version |
 

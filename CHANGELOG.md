@@ -4,6 +4,9 @@
 
 ### Added
 
+- `self-package` subcommand and core API to bundle CTT's own codebase into a `.txt`-only cross-domain transfer package.
+- Zero-dependency Python bootstrap restoration script (`src/controlled_text_transfer/bootstrap.py`) embedded in self-packages for initial deployment on unequipped destination hosts.
+- `bootstrap` subcommand in `scripts/run.sh` to generate self-bootstrapping transfer archives.
 - `release` and `unrelease` subcommands in `scripts/run.sh` to automate release preflight alignment, metadata validation, quality gates, git tagging, and local rollback operations.
 - Offline release snapshot validation helper (`scripts/ctt-release-check.sh`).
 - Comprehensive subcommand, flag, and utility reference guide in `scripts/README.md`.

@@ -17,6 +17,7 @@ All primary operations are dispatched through `bash scripts/run.sh COMMAND [ARGS
 | `check` | `bash scripts/run.sh check` | Execute complete 5-stage quality gate | Rejects extra arguments |
 | `report` | `bash scripts/run.sh report [flags]` | Generate indexed HTML/JSON quality & API dashboard | `--pydoc-only`, `--output PATH` |
 | `build` | `bash scripts/run.sh build [args]` | Build standalone binary via PyInstaller | Accepts PyInstaller options |
+| `bootstrap` | `bash scripts/run.sh bootstrap [path]` | Package CTT into a .txt-only self-bootstrapping bundle | Optional output path (default: `dist/ctt-bootstrap.zip`) |
 | `release` | `bash scripts/run.sh release <version>` | Align version metadata, verify quality, commit, and tag | Target version (e.g. `0.1.1` or `v0.1.1`) |
 | `unrelease` | `bash scripts/run.sh unrelease <version>` | Undo local release preparation tag and commit | Target version (e.g. `0.1.1` or `v0.1.1`) |
 | `clean` | `bash scripts/run.sh clean [flags]` | Remove build artifacts and caches | `--dry-run`, `--environment` |
@@ -80,6 +81,17 @@ Uses PyInstaller and `ctt.spec` to build an un-archived standalone application b
 
 ```bash
 bash scripts/run.sh build
+```
+
+### `bootstrap` — Build Self-Bootstrapping Bundle
+Packages the CTT codebase into a `.txt`-only transfer package containing an embedded zero-dependency `bootstrap.py.txt` script for initial deployment onto isolated destination hosts.
+
+```bash
+# Build default self-bootstrapping zip at dist/ctt-bootstrap.zip
+bash scripts/run.sh bootstrap
+
+# Build bundle at custom path
+bash scripts/run.sh bootstrap /tmp/ctt-bootstrap.zip
 ```
 
 ### `release` — Prepare & Tag a Release

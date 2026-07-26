@@ -17,6 +17,34 @@ by `bash scripts/run.sh clean`.
 output is restricted to the top-level `reports/` directory to prevent
 generated files from being mistaken for source.
 
+## Initial Deployment & Self-Bootstrapping
+
+When transferring CTT to an isolated destination network that does not yet have CTT installed:
+
+1. **Self-Package on Source Network**:
+   ```text
+   bash scripts/run.sh bootstrap dist/ctt-bootstrap.zip
+   ```
+   Or using CLI:
+   ```text
+   ctt self-package dist/ctt-bootstrap.zip --format zip
+   ```
+
+2. **Transfer Across Boundary**:
+   Transfer `dist/ctt-bootstrap.zip` across the CDS boundary. All files end in `.txt` and comply with text policy rules.
+
+3. **Bootstrap Restore on Destination Network**:
+   On the destination host (which has Python 3.12+ installed but no CTT package):
+   ```text
+   unzip ctt-bootstrap.zip -d /tmp/ctt-bootstrap
+   python /tmp/ctt-bootstrap/src/controlled_text_transfer/bootstrap.py /tmp/ctt-bootstrap /opt/ctt
+   ```
+
+4. **Install CTT**:
+   ```text
+   pip install /opt/ctt
+   ```
+
 ## Prepare
 
 1. Review `ctt.yaml` and `.cttignore`.

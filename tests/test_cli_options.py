@@ -20,6 +20,13 @@ EXPECTED_OPTIONS = {
         "--sign",
         "--key-label",
     },
+    "self-package": {
+        "--help",
+        "--policy",
+        "--log-json",
+        "--format",
+        "--dry-run",
+    },
     "preflight": {"--help", "--policy", "--json"},
     "verify": {
         "--help",
@@ -74,7 +81,7 @@ def test_every_advertised_option_is_documented_in_its_command_section():
     sections = {
         match.group("command"): match.group("body")
         for match in re.finditer(
-            r"^## `(?P<command>\w+)`\n(?P<body>.*?)(?=^## |\Z)",
+            r"^## `(?P<command>[\w-]+)`\n(?P<body>.*?)(?=^## |\Z)",
             documentation,
             re.MULTILINE | re.DOTALL,
         )
