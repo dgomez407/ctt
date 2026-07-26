@@ -4,7 +4,7 @@ allowlist:
 add_bom: true
 hash_algorithm: sha256
 max_bytes: 10485760
-package_format: directory  # directory, zip, tar, tar.gz
+package_format: directory  # directory, zip, tar, tgz
 ignore_file: .cttignore
 profile: generic-text-v1
 max_total_bytes: 104857600

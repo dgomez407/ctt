@@ -70,7 +70,7 @@ ctt diff ./transfer ./source --json
 
 Use `--dry-run` with `prepare` or `restore` to inspect the operation without
 writing. Use `--log-json` for machine-readable audit events. Directory format
-publishes the requested directory; `zip`, `tar`, and `tar.gz` publish only the
+publishes the requested directory; `zip`, `tar`, and `tgz` publish only the
 corresponding archive.
 
 Use `prepare --strict --json-report preflight.json` to publish nothing when a

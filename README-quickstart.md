@@ -33,8 +33,8 @@ uv run ctt prepare ./source ./transfer --policy ./ctt.yaml --strict
 ```
 
 The default `directory` package format creates `./transfer`. ZIP, TAR, and
-TAR.GZ policies instead create `./transfer.zip`, `./transfer.tar`, or
-`./transfer.tar.gz`.
+TGZ policies instead create `./transfer.zip`, `./transfer.tar`, or
+`./transfer.tgz`.
 
 For all options:
 

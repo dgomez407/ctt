@@ -107,7 +107,7 @@ file before atomically publishing the destination.
 
 ## Archive formats
 
-Set `package_format` to one of `directory`, `zip`, `tar`, or `tar.gz`.
+Set `package_format` to one of `directory`, `zip`, `tar`, or `tgz`.
 Directory format publishes the requested directory. Archive formats publish
 only the corresponding archive after verifying its temporary canonical
 layout. Every artifact must still be scanned by surrounding controls.

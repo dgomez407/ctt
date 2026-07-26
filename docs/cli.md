@@ -51,7 +51,7 @@ uv run ctt prepare ./source ./transfer --policy ./ctt.yaml --strict --json-repor
 | --- | --- |
 | `--policy PATH` | Apply a YAML compatibility/content policy. Example: `--policy ctt.yaml`. |
 | `--source PATH` | Select source directory to package (default: current directory). |
-| `--format FORMAT` | Select package output format (`zip`, `directory`, `tar`, `tar.gz`). Default: `zip`. |
+| `--format FORMAT` | Select package output format (`zip`, `directory`, `tar`, `tgz`). Default: `zip`. |
 | `--dry-run` | Check what can be packaged without creating output. |
 | `--log-json` | Emit the completion audit event as JSON on stderr. |
 

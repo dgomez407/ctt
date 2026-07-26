@@ -90,7 +90,7 @@ def _parser() -> argparse.ArgumentParser:
     self_package_parser.add_argument(
         "--format",
         default="zip",
-        choices=["directory", "zip", "tar", "tar.gz"],
+        choices=["directory", "zip", "tar", "tgz"],
         help="package output format (default: zip)",
     )
     self_package_parser.add_argument(

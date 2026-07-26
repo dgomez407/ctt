@@ -57,6 +57,17 @@ def test_self_package_options_and_error_handling(tmp_path: Path):
     assert created == tmp_path / "bundle_no_ext.zip"
     assert created.is_file()
 
+    # Test tgz format and suffix deduplication when target already ends with .tgz or .tar.gz
+    target_tgz = tmp_path / "bundle1.tgz"
+    m_tgz, created_tgz = self_package(target_tgz, package_format="tgz")
+    assert created_tgz == tmp_path / "bundle1.tgz"
+    assert created_tgz.is_file()
+
+    target_targz = tmp_path / "bundle2.tar.gz"
+    m_targz, created_targz = self_package(target_targz, package_format="tgz")
+    assert created_targz == tmp_path / "bundle2.tgz"
+    assert created_targz.is_file()
+
     # Test explicit policy
     custom_policy = Policy(package_format="zip")
     m2, created2 = self_package(tmp_path / "custom.zip", policy=custom_policy)

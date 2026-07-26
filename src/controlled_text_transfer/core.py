@@ -55,7 +55,7 @@ DEFAULT_NAMES = {
     ".gitattributes",
     ".editorconfig",
 }
-PACKAGE_SUFFIXES = {"zip": ".zip", "tar": ".tar", "tar.gz": ".tar.gz"}
+PACKAGE_SUFFIXES = {"zip": ".zip", "tar": ".tar", "tgz": ".tgz"}
 PACKAGE_FORMATS = {"directory", *PACKAGE_SUFFIXES}
 APPROVED_HASH_ALGORITHMS = frozenset({"sha256", "sha512", "blake3"})
 APPROVED_HASH_LENGTHS = frozenset({64, 128})
@@ -626,6 +626,20 @@ def preflight(source: Path, policy: Policy) -> PreflightReport:
     return report
 
 
+def _resolve_package_destination(destination: Path, fmt: str) -> Path:
+    if fmt not in PACKAGE_SUFFIXES:
+        return destination
+    suffix = PACKAGE_SUFFIXES[fmt]
+    dest_str = str(destination)
+    if dest_str.endswith(suffix):
+        return destination
+    for old_suffix in (".tar.gz", ".tgz", ".zip", ".tar"):
+        if dest_str.endswith(old_suffix):
+            dest_str = dest_str[: -len(old_suffix)]
+            break
+    return Path(dest_str + suffix)
+
+
 def _package(
     transfer: Path,
     fmt: str,
@@ -636,15 +650,14 @@ def _package(
     _validate_package_format(fmt)
     if fmt == "directory":
         return transfer
-    suffix = PACKAGE_SUFFIXES[fmt]
-    archive = archive or transfer.with_suffix(suffix)
+    archive = archive or _resolve_package_destination(transfer, fmt)
     if fmt == "zip":
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
             for p in transfer.rglob("*"):
                 if p.is_file():
                     zf.write(p, p.relative_to(transfer))
-    elif fmt in {"tar", "tar.gz"}:
-        with tarfile.open(archive, "w:gz" if fmt == "tar.gz" else "w") as tf:
+    elif fmt in {"tar", "tgz"}:
+        with tarfile.open(archive, "w:gz" if fmt == "tgz" else "w") as tf:
             tf.add(transfer, arcname=root_name or transfer.name)
     return archive
 
@@ -868,7 +881,7 @@ def prepare(
         if transfer.exists():
             raise FileExistsError(transfer)
         final_archive = (
-            transfer.with_suffix(PACKAGE_SUFFIXES[policy.package_format])
+            _resolve_package_destination(transfer, policy.package_format)
             if policy.package_format != "directory"
             else None
         )
@@ -1198,10 +1211,7 @@ def self_package(
                 pkg_root = cwd
 
     if package_format in PACKAGE_SUFFIXES:
-        suffix = PACKAGE_SUFFIXES[package_format]
-        dest_str = str(destination)
-        if not dest_str.endswith(suffix):
-            destination = Path(dest_str + suffix)
+        destination = _resolve_package_destination(destination, package_format)
     elif package_format != "directory":
         raise TransferError(f"unsupported package format: {package_format}")
 

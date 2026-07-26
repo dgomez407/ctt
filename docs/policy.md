@@ -23,7 +23,7 @@ uv run ctt prepare SOURCE TRANSFER --policy POLICY.yaml --strict
 | `allowlist.names` | List of permitted exact filenames, such as `README` | Built-in text names |
 | `add_bom` | Add a UTF-8 BOM to transfer copies; restoration removes only a BOM added by CTT | `true` |
 | `hash_algorithm` | `sha256`, `sha512`, or `blake3` | `sha256` |
-| `package_format` | `directory`, `zip`, `tar`, or `tar.gz` | `directory` |
+| `package_format` | `directory`, `zip`, `tar`, or `tgz` | `directory` |
 | `ignore_file` | Non-empty filename read from the source root | `.cttignore` |
 | `profile` | Named compatibility contract; YAML currently supports `generic-text-v1` | `generic-text-v1` |
 | `max_bytes` | Maximum original bytes per file | `10485760` |
@@ -89,11 +89,11 @@ expressions. Content such as `secret=` does not match `SECRET=`.
 Only `package_format` needs to change to produce an archive:
 
 ```yaml
-package_format: tar.gz
+package_format: tgz
 hash_algorithm: sha512
 ```
 
-Preparing `./transfer` with this policy publishes `./transfer.tar.gz`; it does
+Preparing `./transfer` with this policy publishes `./transfer.tgz`; it does
 not retain a second directory package. `verify` and `restore` accept the
 archive path directly.
 

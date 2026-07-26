@@ -88,8 +88,20 @@ def test_tar_and_tar_gz_use_correct_archive_suffixes(tmp_path: Path):
     assert tar_package.with_suffix(".tar").is_file()
 
     gz_package = tmp_path / "gz-package"
-    prepare(source, gz_package, Policy(package_format="tar.gz"))
-    assert gz_package.with_suffix(".tar.gz").is_file()
+    prepare(source, gz_package, Policy(package_format="tgz"))
+    assert gz_package.with_suffix(".tgz").is_file()
+
+
+def test_package_invalid_format(tmp_path: Path):
+    from controlled_text_transfer.core import (
+        TransferError,
+        _package,
+        _resolve_package_destination,
+    )
+
+    assert _resolve_package_destination(tmp_path / "mydir", "directory") == tmp_path / "mydir"
+    with pytest.raises(TransferError, match="unsupported package format"):
+        _package(tmp_path, "invalid")
 
 
 def test_sha512_and_original_bom(tmp_path: Path):

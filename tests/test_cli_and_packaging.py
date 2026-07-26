@@ -43,7 +43,7 @@ def test_zip_contains_manifest_and_relative_payload_layout(tmp_path: Path):
 
 @pytest.mark.parametrize(
     ("package_format", "suffix", "mode"),
-    [("tar", ".tar", "r"), ("tar.gz", ".tar.gz", "r:gz")],
+    [("tar", ".tar", "r"), ("tgz", ".tgz", "r:gz")],
 )
 def test_tar_archives_contain_canonical_package_layout(
     tmp_path: Path,
