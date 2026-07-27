@@ -9,9 +9,15 @@ from controlled_text_transfer.cli import _parser
 
 
 def test_package_is_exposed_only_as_controlled_text_transfer():
+    import tomllib
+    from pathlib import Path
+
     import controlled_text_transfer
 
-    assert controlled_text_transfer.__version__ == "0.1.0"
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+
+    assert controlled_text_transfer.__version__ == version
     assert importlib.util.find_spec("cds") is None
     assert importlib.util.find_spec("cds_text") is None
 

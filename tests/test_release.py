@@ -155,8 +155,10 @@ def test_release_check_accepts_the_matching_version_tag(tmp_path: Path):
 
 
 def test_release_check_rejects_a_mismatched_version_tag():
+    version = _project_metadata()["version"]
+    mismatched_tag = "v999.999.999"
     result = subprocess.run(
-        [sys.executable, "scripts/check_release.py", "v0.1.1"],
+        [sys.executable, "scripts/check_release.py", mismatched_tag],
         cwd=ROOT,
         check=False,
         capture_output=True,
@@ -164,7 +166,7 @@ def test_release_check_rejects_a_mismatched_version_tag():
     )
 
     assert result.returncode == 2
-    assert "tag v0.1.1 does not match project version 0.1.0" in result.stderr
+    assert f"tag {mismatched_tag} does not match project version {version}" in result.stderr
     assert "Traceback" not in result.stderr
 
 

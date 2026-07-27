@@ -11,6 +11,8 @@
 - PyPI package URLs in `pyproject.toml` metadata and direct installation runbooks in `README.md`, `README-quickstart.md`, and `docs/operations.md`.
 - `release` and `unrelease` subcommands in `scripts/run.sh` to automate release preflight alignment, metadata validation, quality gates, git tagging, and local rollback operations.
 - Offline release snapshot validation helper (`scripts/ctt-release-check.sh`).
+- `Check Usage:` section in `scripts/run.sh help` and `scripts/README.md` recommending pre-PR quality checks.
+- Default ignore pattern fallback (`DEFAULT_IGNORE_PATTERNS`) when `.cttignore` is absent.
 - Comprehensive subcommand, flag, and utility reference guide in `scripts/README.md`.
 - Architecture Decision Record [ADR-013](docs/decisions/0013-release-alignment-and-rollback-operations.md) for release alignment and unrelease operations.
 
@@ -18,6 +20,16 @@
 
 - Replaced `tar.gz` package format with `tgz` format across core engine, CLI options, policy definitions, and documentation.
 - Improved archive suffix deduplication (`_resolve_package_destination`) and internal root directory formatting (`_clean_archive_root_name`) to prevent double extensions and suffix retention during archive extraction.
+
+### Fixed
+
+- Source scanning preflight resilience handling symlinks (`symlink_not_allowed`) and root-escaping paths (`path_escapes_root`) cleanly during preflight scanning.
+- `scripts/run.sh report` and `scripts/report.py` virtual environment tool executable resolution.
+- `scripts/run.sh release` version synchronization for `src/controlled_text_transfer/__init__.py`.
+- `scripts/check_release.py` handling of empty markdown subheadings under `## [Unreleased]`.
+- `scripts/ctt-release-check.sh` pre-push `HEAD` release snapshot validation.
+
+### Security
 
 ## [0.1.0] - 2026-07-25
 

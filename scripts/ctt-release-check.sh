@@ -63,7 +63,7 @@ if ! git -C "$repository" rev-parse --verify --quiet "$release_ref^{commit}" >/d
     exit 2
 fi
 
-if ! git -C "$repository" merge-base --is-ancestor "$release_ref" origin/main; then
+if [[ "$release_ref" != "HEAD" ]] && ! git -C "$repository" merge-base --is-ancestor "$release_ref" origin/main; then
     printf 'error: %s is not contained in the local origin/main reference\n' \
         "$release_ref" >&2
     exit 2
