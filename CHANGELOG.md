@@ -20,6 +20,7 @@
 
 - Replaced `tar.gz` package format with `tgz` format across core engine, CLI options, policy definitions, and documentation.
 - Improved archive suffix deduplication (`_resolve_package_destination`) and internal root directory formatting (`_clean_archive_root_name`) to prevent double extensions and suffix retention during archive extraction.
+- Restructured `README.md` to highlight CTT's primary security purpose, core 4-step workflow, path roles, policy defaults, and expressive CLI command examples while separating maintainer scripts.
 
 ### Fixed
 
