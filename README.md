@@ -9,16 +9,216 @@
 [![Checked with mypy](https://img.shields.io/badge/types-Mypy%20Strict-blue)](https://mypy-lang.org/)
 [![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
-Controlled Text Transfer (`ctt`) prepares an allowlisted set of text files for
-a controlled transfer that accepts only `.txt` names. It appends `.txt`,
-preserves content and paths in a signed-ready JSON manifest, adds an optional
-UTF-8 BOM only to transfer copies, and restores byte-identical originals.
+**Controlled Text Transfer (`ctt`)** is a security-oriented CLI tool and Python library for transferring files across strict security boundaries—such as Cross-Domain Solutions (CDS), air-gapped networks, or restricted file transfer drops—that only permit plain text (`.txt`) files.
+
+`ctt` validates source files against explicit compliance policies, packages allowed files into a `.txt`-only transfer format (preserving full original paths and metadata in a signed-ready JSON manifest), and restores exact byte-identical originals at the destination.
+
 Python 3.12 or newer is required.
 
-For the shortest path to running the application, see
-[README-quickstart.md](README-quickstart.md).
+---
 
-## Documentation
+## Core Transfer Workflow
+
+```
+[ Source Directory ]
+         │
+         ▼
+  1. preflight ──────► Audit source directory files against compliance policy (Read-only)
+         │
+         ▼
+  2. prepare ────────► Package allowlisted files into .txt transfer directory or archive
+         │
+  [ CDS / Restricted Boundary Transfer ]
+         │
+         ▼
+  3. verify ─────────► Check package directory/archive integrity, hashes & signatures
+         │
+         ▼
+  4. restore ────────► Recreate original files byte-for-byte in destination directory
+```
+
+1. **`preflight`**: Inspects a directory to test files against policy rules without making changes.
+2. **`prepare`**: Converts approved files to `.txt` transfer copies, adds transport BOMs where configured, generates `ctt-manifest.json.txt`, and publishes a signed-ready bundle.
+3. **`verify`**: Validates manifest hashes, path boundaries, package structure, and optional digital signatures before unpacking.
+4. **`restore`**: Strips `.txt` transfer extensions and BOMs, recreating exact original files atomically at the destination.
+
+---
+
+## Quick Start
+
+Install official releases directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
+```bash
+pip install controlled-text-transfer
+```
+
+Run the core 4-step workflow using zero-configuration defaults:
+
+```bash
+# 1. Inspect source directory against policy (prints concise summary)
+ctt preflight ./source_dir
+
+# 2. Package allowlisted files into a transfer directory
+ctt prepare ./source_dir ./transfer_dir
+
+# 3. Verify transfer package directory (or archive)
+ctt verify ./transfer_dir
+
+# 4. Restore original files into a new destination directory
+ctt restore ./transfer_dir ./restored_dir
+```
+
+> **Path Roles & Optional Flags**:
+> - **Directory Arguments**: `./source_dir` is the input folder containing files; `./transfer_dir` is the output transfer folder (or archive path); `./restored_dir` is the new output folder where original files are recreated.
+> - **Zero Required Flags**: `ctt` works out of the box with zero flags using built-in safe defaults (`generic-text-v1` profile, common text allowlists, SHA-256).
+> - **`--json`** (`preflight`): Optional flag to output complete machine-readable JSON details instead of a summary text report.
+> - **`--strict`** (`prepare`): Optional flag to fail closed and create nothing if any single candidate file is rejected.
+> - **`--policy PATH`**: Optional flag to load custom YAML rules (e.g. `ctt.yaml`) instead of built-in defaults.
+
+For detailed quickstart guidance, see [README-quickstart.md](README-quickstart.md).
+
+---
+
+## Command Reference
+
+The `ctt` CLI cleanly separates end-user transfer operations from developer maintenance tools.
+
+### Primary Transfer Commands
+
+| Command | Purpose | Default Usage | Expressive Usage with Options |
+|---|---|---|---|
+| `preflight` | Produce a read-only policy compatibility report | `ctt preflight ./source_dir` | `ctt preflight ./source_dir --policy ctt.yaml --json` |
+| `prepare` | Package allowlisted files into `.txt` transfer format | `ctt prepare ./source_dir ./transfer_dir` | `ctt prepare ./source_dir ./dist/pkg.zip --policy ctt.yaml --strict --json-report report.json --log-json` |
+| `verify` | Verify package integrity, manifest, and signatures | `ctt verify ./transfer_dir` | `ctt verify ./transfer.zip --require-signature --log-json` |
+| `restore` | Restore original byte-identical files | `ctt restore ./transfer_dir ./restored_dir` | `ctt restore ./transfer.zip ./restored_dir --dry-run --log-json` |
+
+### Secondary Utility Commands
+
+| Command | Purpose | Default Usage | Expressive Usage with Options |
+|---|---|---|---|
+| `diff` | Compare transfer package against source directory | `ctt diff ./transfer_dir ./source_dir` | `ctt diff ./transfer.zip ./source_dir --policy ctt.yaml --json` |
+| `self-package` | Package CTT itself into a `.txt`-only self-bootstrapping bundle | `ctt self-package ./ctt-bootstrap.zip` | `ctt self-package ./dist/ctt-bootstrap.tgz --source . --format tgz` |
+
+---
+
+## Practical Command Examples
+
+Here are common operational scenarios showing how to combine additional CLI options:
+
+### 1. Pre-Transfer Audit and Reporting
+Evaluate a source directory before transfer:
+```bash
+# Summary stdout report using built-in policy defaults
+ctt preflight ./source_dir
+
+# Machine-readable JSON preflight report using custom policy
+ctt preflight ./source_dir --policy ctt.yaml --json > preflight-audit.json
+```
+
+### 2. Strict Packaging with Manifest Audit & Audit Logging
+Enforce strict validation (fail if any candidate file is rejected), save a preflight report, and output a JSON audit event to stderr:
+```bash
+# Package into a ZIP archive with strict policy enforcement and audit outputs
+ctt prepare ./source_dir ./dist/transfer.zip \
+  --policy ctt.yaml \
+  --strict \
+  --json-report ./preflight.json \
+  --log-json
+```
+
+### 3. Signature Verification & Dry-Run Restoration
+Verify digital signatures and test restoration without writing to disk:
+```bash
+# Verify transfer package requiring an authenticated digital signature
+ctt verify ./transfer.zip --require-signature --log-json
+
+# Dry-run restoration to inspect files without writing output
+ctt restore ./transfer.zip ./restored_dir --dry-run
+
+# Perform real atomic restoration with JSON audit logging
+ctt restore ./transfer.zip ./restored_dir --require-signature --log-json
+```
+
+### 4. Package Comparison (`diff`)
+Inspect changes between a transfer package and a live source directory:
+```bash
+ctt diff ./transfer_dir ./source_dir --policy ctt.yaml --json
+```
+
+### 5. Self-Bootstrapping Deployment Package
+Package the `ctt` application itself into a standalone `.txt`-only transfer bundle with embedded zero-dependency bootstrapper:
+```bash
+ctt self-package ./dist/ctt-bootstrap.zip --format zip
+```
+
+For complete CLI flag documentation, see the [CLI option reference](docs/cli.md).
+
+---
+
+## Policy and Compliance
+
+`ctt` uses an explicit policy-driven allowlist:
+- **Default Policy (No `--policy` flag required)**: UTF-8 decoding, explicit extension/name allowlists, SHA-256 hashes, and a 10 MiB per-file limit.
+- **Custom Policy (`--policy PATH`)**: Load custom rules from a YAML file (e.g. `ctt.yaml`).
+- **Ignored Files**: Files matching `.cttignore` or failing allowlist criteria are safely omitted from transfer.
+- **`generic-text-v1` Profile**: Enforces file count, aggregate size, path depth, character sets, line lengths, control character checks, and forbidden textual patterns.
+- **Hash Support**: SHA-256 (default), SHA-512 (`hash_algorithm: sha512`), and optional BLAKE3 (`uv sync --extra blake3`).
+
+See the [policy reference and examples](docs/policy.md) for full configuration details.
+
+---
+
+## Security & Integrity
+
+- **Atomic Restoration**: Destinations are staged and validated before publication to prevent partial writes.
+- **Traversal Prevention**: Every manifest path is verified against a link-free package root.
+- **Digital Signatures**: Detached signature hooks in `controlled_text_transfer.signing` integrate with host GPG/X.509 infrastructure. `ctt` fails closed if a signature is missing when `--require-signature` is specified.
+
+See [SECURITY.md](SECURITY.md) for detailed security guidance.
+
+---
+
+## Development & Maintenance
+
+Developer workflow and project maintenance scripts are managed separately from user CLI commands:
+
+```bash
+# Environment setup
+bash scripts/run.sh setup
+uv sync --extra dev
+
+# Run test suite and quality gates
+bash scripts/run.sh check
+uv run --extra dev pytest
+
+# Generate test coverage and API documentation reports
+bash scripts/run.sh report
+
+# Clean generated build and test artifacts
+bash scripts/run.sh clean --dry-run
+bash scripts/run.sh clean
+```
+
+For full details on repository scripts and release workflows, see [Development scripts](scripts/README.md) and [AGENTS.md](AGENTS.md).
+
+---
+
+## GitHub automation
+
+GitHub-specific automation enforces the same build, test, security, and
+release requirements documented for local development. It uses
+least-privilege permissions, immutable action references, and locked Python
+dependencies.
+
+- [Workflow definitions](.github/workflows/README.md)
+- [`dependabot.yml`](.github/dependabot.yml) maintains pinned GitHub Actions
+  dependencies.
+
+Releases use PyPI Trusted Publishing through `.github/workflows/release.yml`. Configure a pending GitHub publisher for project `controlled-text-transfer`, owner `dgomez407`, repository `ctt`, workflow `release.yml`, and environment `pypi`. After quality gates pass, push a version tag such as `v0.1.0` from a commit contained in `main`. The workflow verifies that the tagged commit belongs to `origin/main`, the tag, package version, README, and changelog agree; reruns the locked quality gates; validates the wheel and source distribution; and publishes them without a stored API token.
+
+---
+
+## Documentation Index
 
 - [Documentation index](docs/README.md)
 - [Operations runbook](docs/operations.md)
@@ -32,174 +232,9 @@ For the shortest path to running the application, see
 - [Repository-specific agent guidance](AGENTS-project.md)
 - [Gemini agent entry point](GEMINI.md)
 
-## Repository Map
+### Repository Map
 
 - [GitHub workflow details](.github/workflows/README.md)
 - [Development scripts](scripts/README.md)
 - [Source code](src/README.md)
 - [Test suite](tests/README.md)
-
-## GitHub automation
-
-GitHub-specific automation enforces the same build, test, security, and
-release requirements documented for local development. It uses
-least-privilege permissions, immutable action references, and locked Python
-dependencies.
-
-- [Workflow definitions](.github/workflows/README.md)
-- [`dependabot.yml`](.github/dependabot.yml) maintains pinned GitHub Actions
-  dependencies.
-
-## Quick start
-
-Install official releases directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
-
-```bash
-pip install controlled-text-transfer
-# Or install from source:
-python -m pip install .
-
-ctt prepare ./source ./transfer --policy ctt.yaml
-ctt preflight ./source --policy ctt.yaml --json
-ctt verify ./transfer
-ctt restore ./transfer ./restored
-ctt diff ./transfer ./source --json
-```
-
-## Commands
-
-| Command | Purpose |
-|---|---|
-| `uv run ctt preflight SOURCE --json` | Produce a read-only compatibility report |
-| `uv run ctt prepare SOURCE TRANSFER --strict` | Build only when every candidate passes |
-| `uv run ctt self-package DESTINATION` | Build .txt-only self-bootstrapping CTT transfer bundle |
-| `uv run ctt verify TRANSFER` | Verify a directory or supported archive |
-| `uv run ctt restore TRANSFER DESTINATION` | Restore verified original files |
-| `uv run --extra dev pytest` | Install missing development tools and run all tests |
-| `bash scripts/run.sh check` | Run the complete local quality gate |
-| `bash scripts/run.sh report` | Generate browsable API, coverage, quality, and security reports |
-| `bash scripts/run.sh bootstrap [PATH]` | Package CTT into a .txt-only self-bootstrapping bundle |
-| `bash scripts/run.sh release VERSION` | Align version metadata, verify quality, commit, and tag release |
-| `bash scripts/run.sh unrelease VERSION` | Remove local tag and reset release commit for a version |
-
-Use `--dry-run` with `prepare` or `restore` to inspect the operation without
-writing. Use `--log-json` for machine-readable audit events. Directory format
-publishes the requested directory; `zip`, `tar`, and `tgz` publish only the
-corresponding archive.
-
-Use `prepare --strict --json-report preflight.json` to publish nothing when a
-candidate is rejected while retaining a deterministic compatibility report.
-Verification and restoration accept canonical directories and generated
-archives directly. Directory verification rejects linked package or payload
-paths, and restoration publishes only after its staged output validates.
-
-`diff` is read-only and reports added, removed, modified, and unchanged
-allowlisted files when compared with the source directory.
-
-## Architecture
-
-The package keeps transformation, integrity verification, packaging, signing
-hooks, and CLI concerns small and separable. The core uses a policy-driven
-allowlist and a versioned manifest; archive creation is optional; signing is
-delegated to externally managed key infrastructure. See ADR-001 through
-ADR-012 for the rationale and rejected alternatives.
-
-## Policy and detection
-
-The default policy uses an explicit extension/name allowlist, UTF-8 decoding, a 10 MiB per-file limit, and SHA-256. Files that are binary, undecodable, ignored by `.cttignore`, oversized, or not allowlisted are reported in the manifest and never copied. `.cttignore` patterns use simple gitignore-like glob matching.
-
-The concrete `generic-text-v1` compatibility profile also checks aggregate
-size, file count, path depth and length, filename characters, line endings,
-control characters, Unicode policy, line length, prohibited textual patterns,
-and the `.txt` transfer extension. See the
-[policy reference](docs/policy.md) for every field, default, and example.
-
-SHA-512 is available through `hash_algorithm: sha512`. BLAKE3 is optional
-(`uv sync --extra blake3`) and fails closed with a clear message when
-unavailable.
-
-## Security notes
-
-The source directory is never modified. Destination directories must not
-already exist. Oversized sources are rejected before content reads. Every
-manifest path is checked against a link-free package root to prevent traversal
-and external reads. Verification hashes transfer bytes before restoration;
-restoration validates a staged destination after removing the transport BOM
-and publishes it atomically. Do not treat a checksum as authenticity: use a
-separately managed digital signature and verify it in the approved environment.
-
-Signing is exposed through a detached-signature hook in
-`controlled_text_transfer.signing`;
-integrate approved GPG or X.509 tooling outside this package. Never pass
-private keys or passphrases through CLI arguments, environment variables, or
-manifest content. See [SECURITY.md](SECURITY.md) for the operating guidance.
-Archives should be scanned by the CDS and malware controls; renaming or
-encoding is not a bypass.
-
-Packages that declare a signature require a trusted verifier by default.
-`--allow-unverified-signature` performs explicitly unauthenticated,
-integrity-only verification.
-
-## Development
-
-The Bash dispatcher provides memorable shortcuts:
-
-```bash
-bash scripts/run.sh setup
-bash scripts/run.sh test
-bash scripts/run.sh check
-bash scripts/run.sh build
-bash scripts/run.sh clean --dry-run
-```
-
-Run `bash scripts/run.sh help` for the command summary. The underlying commands
-remain available directly:
-
-```bash
-uv sync --extra dev
-uv run pytest
-uv run ruff check .
-uv run black --check .
-uv run mypy src
-uv run bandit -r src scripts
-```
-
-After deleting `.venv`, either run `uv sync --extra dev` before the quality
-commands or use `uv run --extra dev pytest` to install the development extra
-and run the complete test suite in one step. Plain `uv run pytest` cannot find
-pytest in a newly created runtime-only environment. Use
-`uv run --extra dev pytest -q` as the equivalent concise-output alternative.
-
-The package is pipx-friendly because it exposes the `ctt` console script.
-Build a standalone executable with `pyinstaller ctt.spec`; keep
-generated binaries out of source control.
-
-### Clean generated artifacts
-
-Preview the repository-scoped cleanup, then remove reproducible build and test
-artifacts:
-
-```bash
-bash scripts/run.sh clean --dry-run
-bash scripts/run.sh clean
-```
-
-The default removes `build/`, `dist/`, tool caches, `.coverage`,
-`__pycache__/`, and `*.egg-info/`; it preserves source, configuration,
-`uv.lock`, and `.venv`. To remove `.venv` too, run
-`bash scripts/run.sh clean --environment`; the dispatcher selects the first
-`python` on `PATH` outside the project environment. The action refuses to
-delete its active interpreter. It never
-cleans uv's shared global cache because that can affect other projects.
-
-## Publishing
-
-Releases use PyPI Trusted Publishing through
-`.github/workflows/release.yml`. Configure a pending GitHub publisher for
-project `controlled-text-transfer`, owner `dgomez407`, repository `ctt`,
-workflow `release.yml`, and environment `pypi`. After the quality gates pass,
-push a version tag such as `v0.1.0` from a commit contained in `main`. The
-workflow verifies that the tagged commit belongs to `origin/main`, the tag,
-package version, README, and changelog agree; reruns the locked quality gates;
-validates the wheel and source distribution; and publishes them without a
-stored API token.
