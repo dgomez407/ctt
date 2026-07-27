@@ -16,6 +16,8 @@
 - GitHub repository link and PyPI monthly download status badges in `README.md`.
 - Repository `.git-blame-ignore-revs` configuration file to ignore bulk code formatting
   and line-ending normalization commits during `git blame` inspection.
+- PyMarkdown linter (`pymarkdownlnt`) integrated into dev dependencies,
+  `pyproject.toml`, and the pre-PR quality gate (`scripts/run.sh check`).
 
 ### Changed
 
@@ -32,6 +34,7 @@
 
 - Made stable file and archive inspection independent of Python-version-specific
   `pathlib` query call ordering.
+- Normalize signing-file filesystem failures into controlled verification errors.
 
 ### Security
 

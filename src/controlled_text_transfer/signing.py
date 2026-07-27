@@ -45,16 +45,17 @@ class ManifestSigner(Protocol):
 
 def _read_stable(path: Path, maximum: int, label: str) -> bytes:
     """Read one regular file through a stable descriptor with a hard size bound."""
-    before = path.lstat()
-    if (
-        stat.S_ISLNK(before.st_mode)
-        or bool(getattr(before, "st_reparse_tag", 0))
-        or not stat.S_ISREG(before.st_mode)
-    ):
-        raise ValueError(f"{label} must be a regular unlinked file")
-    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags)
+    descriptor: int | None = None
     try:
+        before = path.lstat()
+        if (
+            stat.S_ISLNK(before.st_mode)
+            or bool(getattr(before, "st_reparse_tag", 0))
+            or not stat.S_ISREG(before.st_mode)
+        ):
+            raise ValueError(f"{label} must be a regular unlinked file")
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
         opened = os.fstat(descriptor)
         after = path.lstat()
         before_identity = (before.st_dev, before.st_ino, stat.S_IFMT(before.st_mode))
@@ -71,9 +72,27 @@ def _read_stable(path: Path, maximum: int, label: str) -> bytes:
             if total > maximum:
                 raise ValueError(f"{label} exceeds the security limit")
             chunks.append(chunk)
-        return b"".join(chunks)
-    finally:
+        data = b"".join(chunks)
+    except OSError as error:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        raise ValueError(f"{label} could not be read safely") from error
+    except BaseException:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        raise
+
+    try:
         os.close(descriptor)
+    except OSError as error:
+        raise ValueError(f"{label} could not be read safely") from error
+    return data
 
 
 def _validate_identity(identity: object) -> str:

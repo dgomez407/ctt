@@ -30,9 +30,7 @@ def test_pydoc_only_report_generates_browsable_html_and_summary(tmp_path: Path):
     assert (output / "pydoc" / "controlled_text_transfer.html").is_file()
     assert (output / "pydoc" / "controlled_text_transfer.__main__.html").is_file()
     assert (output / "pydoc" / "controlled_text_transfer.core.html").is_file()
-    pydoc_page = (output / "pydoc" / "controlled_text_transfer.core.html").read_text(
-        encoding="utf-8"
-    )
+    pydoc_page = (output / "pydoc" / "controlled_text_transfer.core.html").read_text(encoding="utf-8")
     assert 'href="../index.html"' in pydoc_page
     assert 'href="../assets/report.css"' in pydoc_page
     assert '<body class="pydoc-page">' in pydoc_page
@@ -126,13 +124,8 @@ def test_report_theme_uses_black_and_semantic_status_colors():
     assert "--failed: #ff5c5c;" in stylesheet
     assert "--failed-bg: rgba(255, 92, 92, 0.14);" in stylesheet
     assert ".status--warning" in stylesheet
-    assert (
-        ".card--warning { border-color: var(--warning); background: var(--warning-bg); }"
-        in stylesheet
-    )
-    assert (
-        ".card--failed { border-color: var(--failed); background: var(--failed-bg); }" in stylesheet
-    )
+    assert ".card--warning { border-color: var(--warning); background: var(--warning-bg); }" in stylesheet
+    assert ".card--failed { border-color: var(--failed); background: var(--failed-bg); }" in stylesheet
 
 
 def test_pydoc_theme_is_scoped_responsive_and_printable():
@@ -162,8 +155,7 @@ def test_pydoc_theme_is_scoped_responsive_and_printable():
             "desktop pydoc grid",
         ),
         (
-            ".pydoc-page .pydoc-layout { display: grid; "
-            "grid-template-columns: 15rem minmax(0, 1fr); }",
+            ".pydoc-page .pydoc-layout { display: grid; " "grid-template-columns: 15rem minmax(0, 1fr); }",
             "responsive pydoc layout",
         ),
         (
@@ -291,9 +283,7 @@ def test_report_output_rejects_repository_source_directories(output: Path):
         validate_output(output)
 
 
-def test_report_rejects_source_boundary_before_inspecting_links(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_report_rejects_source_boundary_before_inspecting_links(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     repository = tmp_path / "repository"
     repository.mkdir()
     report_module = runpy.run_path("scripts/report.py")
@@ -333,9 +323,7 @@ def test_report_cli_rejects_source_output_before_writing():
     assert not Path("src/pydoc").exists()
 
 
-def test_report_output_rejects_canonical_directory_symlink(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_report_output_rejects_canonical_directory_symlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     repository = tmp_path / "repository"
     repository.mkdir()
     outside = tmp_path / "outside"

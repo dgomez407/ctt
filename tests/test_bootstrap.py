@@ -342,9 +342,7 @@ def test_bootstrap_main_error_handling(tmp_path: Path):
     assert exit_code == 2
 
 
-def test_bootstrap_rejects_signed_and_oversized_manifests(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_bootstrap_rejects_signed_and_oversized_manifests(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from controlled_text_transfer import bootstrap
 
     package, destination = _make_dummy_package(tmp_path)
@@ -425,9 +423,7 @@ def test_bootstrap_directory_rejects_linked_payload_and_multiple_manifests(tmp_p
         restore_bootstrap(package, destination)
 
 
-def test_bootstrap_stable_reader_rejects_metadata_and_read_races(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_bootstrap_stable_reader_rejects_metadata_and_read_races(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import io
     import stat
     from types import SimpleNamespace
@@ -508,9 +504,7 @@ def test_bootstrap_stable_reader_rejects_metadata_and_read_races(
         bootstrap._read_stable(payload, 10, "payload")
 
 
-def test_bootstrap_manifest_path_and_source_boundaries(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_bootstrap_manifest_path_and_source_boundaries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import stat
     from types import SimpleNamespace
 
@@ -537,9 +531,7 @@ def test_bootstrap_manifest_path_and_source_boundaries(
     monkeypatch.setattr(
         Path,
         "lstat",
-        lambda _self: SimpleNamespace(
-            st_mode=stat.S_IFREG, st_dev=1, st_ino=1, st_size=1, st_reparse_tag=1
-        ),
+        lambda _self: SimpleNamespace(st_mode=stat.S_IFREG, st_dev=1, st_ino=1, st_size=1, st_reparse_tag=1),
     )
     with pytest.raises(BootstrapError, match="package source must not be a link"):
         restore_bootstrap(package, destination)
@@ -553,9 +545,7 @@ def test_bootstrap_manifest_path_and_source_boundaries(
         restore_bootstrap(package, destination)
 
 
-def test_bootstrap_manifest_entry_and_directory_limits(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_bootstrap_manifest_entry_and_directory_limits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from controlled_text_transfer import bootstrap
 
     with pytest.raises(BootstrapError, match="unsupported hash algorithm"):

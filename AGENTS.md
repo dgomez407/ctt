@@ -36,7 +36,7 @@ Run all commands from the repository root.
 
 ## Coding Style & Naming Conventions
 
-Support Python 3.12 and newer, use four-space indentation and a 100-character line limit,
+Support Python 3.12 and newer, use four-space indentation and a 120-character line limit,
 and keep Black, Ruff, and strict mypy clean. Use `snake_case` for modules and
 functions, `PascalCase` for classes, and `UPPER_SNAKE_CASE` for constants.
 Every public Python module, class, method, and function must have a concise

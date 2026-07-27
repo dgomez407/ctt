@@ -113,13 +113,11 @@ expansion or compression, unsafe paths, multiple manifests, and signed packages 
 cannot authenticate. Signed packages must be restored with an installed, trusted CTT
 verifier.
 
-
 Python 3.12 support begins at 3.12.13, the current upstream security release.
 CI pins that minimum patch explicitly and also tests Python 3.14. Operators
 must update when a later security patch is released; Python 3.12 support will
 be reassessed by October 2027 and removed no later than its October 2028
 upstream end of life.
-
 
 ## Reporting
 

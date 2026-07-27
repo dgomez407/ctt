@@ -198,9 +198,7 @@ def test_prepare_dry_run_rejects_unsupported_package_format(tmp_path: Path):
 
 
 def test_digest_uses_optional_blake3_when_available(monkeypatch):
-    fake_module = SimpleNamespace(
-        blake3=lambda data: SimpleNamespace(hexdigest=lambda: f"blake3:{data.decode()}")
-    )
+    fake_module = SimpleNamespace(blake3=lambda data: SimpleNamespace(hexdigest=lambda: f"blake3:{data.decode()}"))
     monkeypatch.setitem(sys.modules, "blake3", fake_module)
 
     assert digest(b"data", "blake3") == "blake3:data"

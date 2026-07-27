@@ -177,9 +177,7 @@ def test_cli_preflight_summarizes_report_for_people(tmp_path: Path, capsys):
     assert capsys.readouterr().out == "accepted: 1\nrejected: 0\ntotal bytes: 11\n"
 
 
-def test_cli_strict_prepare_writes_report_but_no_package_when_any_file_is_rejected(
-    tmp_path: Path, capsys
-):
+def test_cli_strict_prepare_writes_report_but_no_package_when_any_file_is_rejected(tmp_path: Path, capsys):
     source = _source_with_file(tmp_path)
     (source / "binary.py").write_bytes(b"\xff")
     package = tmp_path / "package"
@@ -229,9 +227,7 @@ def test_cli_can_require_a_trusted_injected_signature_verifier(tmp_path: Path, c
     capsys.readouterr()
 
 
-def test_cli_requires_verifier_for_declared_signature_unless_explicitly_allowed(
-    tmp_path: Path, capsys
-):
+def test_cli_requires_verifier_for_declared_signature_unless_explicitly_allowed(tmp_path: Path, capsys):
     source = _source_with_file(tmp_path)
     package = tmp_path / "package"
     prepare(source, package, Policy(), signer=_FakeSigner())

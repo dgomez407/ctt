@@ -30,9 +30,7 @@ def _manifest(record):
     return {"format_version": 1, "hash_algorithm": "sha256", "files": [record]}
 
 
-def test_stable_reader_rejects_non_regular_and_unreadable_paths(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_stable_reader_rejects_non_regular_and_unreadable_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     directory = tmp_path / "directory"
     directory.mkdir()
     with pytest.raises(TransferError, match="regular unlinked"):
@@ -43,9 +41,7 @@ def test_stable_reader_rejects_non_regular_and_unreadable_paths(
         core._read_stable_file(missing, 10, "input")
 
 
-def test_stable_reader_rejects_identity_change_and_observed_overrun(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_stable_reader_rejects_identity_change_and_observed_overrun(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     path = tmp_path / "input"
     path.write_bytes(b"x")
     original_lstat = Path.lstat
@@ -105,37 +101,25 @@ def test_archive_path_and_stream_observed_limits(tmp_path: Path, monkeypatch: py
     root.mkdir()
     core._write_archive_member(root, ("written.txt",), b"ok")
     assert (root / "written.txt").read_bytes() == b"ok"
-    assert core._stream_archive_member(
-        root, (), io.BytesIO(b""), declared_size=0, expanded_total=3
-    ) == (0, 3)
+    assert core._stream_archive_member(root, (), io.BytesIO(b""), declared_size=0, expanded_total=3) == (0, 3)
 
     monkeypatch.setattr(core, "MAX_ARCHIVE_MEMBER_BYTES", 1)
     with pytest.raises(TransferError, match="member size limit"):
-        core._stream_archive_member(
-            root, ("declared.txt",), io.BytesIO(b""), declared_size=2, expanded_total=0
-        )
+        core._stream_archive_member(root, ("declared.txt",), io.BytesIO(b""), declared_size=2, expanded_total=0)
     with pytest.raises(TransferError, match="member size limit"):
-        core._stream_archive_member(
-            root, ("observed.txt",), io.BytesIO(b"xx"), declared_size=1, expanded_total=0
-        )
+        core._stream_archive_member(root, ("observed.txt",), io.BytesIO(b"xx"), declared_size=1, expanded_total=0)
 
     monkeypatch.setattr(core, "MAX_ARCHIVE_MEMBER_BYTES", 10)
     monkeypatch.setattr(core, "MAX_ARCHIVE_BYTES", 0)
     with pytest.raises(TransferError, match="expansion limit"):
-        core._stream_archive_member(
-            root, ("total.txt",), io.BytesIO(b"x"), declared_size=1, expanded_total=0
-        )
+        core._stream_archive_member(root, ("total.txt",), io.BytesIO(b"x"), declared_size=1, expanded_total=0)
 
     monkeypatch.setattr(core, "MAX_ARCHIVE_BYTES", 10)
     with pytest.raises(TransferError, match="size mismatch"):
-        core._stream_archive_member(
-            root, ("mismatch.txt",), io.BytesIO(b"x"), declared_size=2, expanded_total=0
-        )
+        core._stream_archive_member(root, ("mismatch.txt",), io.BytesIO(b"x"), declared_size=2, expanded_total=0)
 
 
-def test_identity_validation_and_signing_output_limits(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_identity_validation_and_signing_output_limits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     with pytest.raises(TransferError, match="invalid manifest signer identity"):
         core._validated_signer_identity("")
 
@@ -203,6 +187,48 @@ def test_signing_stable_reader_guards(tmp_path: Path, monkeypatch: pytest.Monkey
         signing._read_stable(path, 1, "input")
 
 
+def test_signing_stable_reader_normalizes_filesystem_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    path = tmp_path / "input"
+    path.write_bytes(b"x")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, "lstat", lambda _self: (_ for _ in ()).throw(OSError("lstat")))
+        with pytest.raises(ValueError, match="could not be read safely"):
+            signing._read_stable(path, 10, "input")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(signing.os, "open", lambda *_args: (_ for _ in ()).throw(OSError("open")))
+        with pytest.raises(ValueError, match="could not be read safely"):
+            signing._read_stable(path, 10, "input")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(signing.os, "read", lambda *_args: (_ for _ in ()).throw(OSError("read")))
+        with pytest.raises(ValueError, match="could not be read safely"):
+            signing._read_stable(path, 10, "input")
+
+    original_close = signing.os.close
+
+    def close_then_fail(descriptor: int) -> None:
+        original_close(descriptor)
+        raise OSError("close")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(signing.os, "read", lambda *_args: (_ for _ in ()).throw(OSError("read")))
+        scoped.setattr(signing.os, "close", close_then_fail)
+        with pytest.raises(ValueError, match="could not be read safely"):
+            signing._read_stable(path, 10, "input")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(signing.os, "close", close_then_fail)
+        with pytest.raises(ValueError, match="could not be read safely"):
+            signing._read_stable(path, 10, "input")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(signing.os, "close", close_then_fail)
+        with pytest.raises(ValueError, match="exceeds the security limit"):
+            signing._read_stable(path, 0, "input")
+
+
 def test_external_signer_rejects_oversized_signing_output(monkeypatch: pytest.MonkeyPatch):
     result = SimpleNamespace(returncode=0, stdout=b"xx", stderr=b"")
     monkeypatch.setattr(signing.subprocess, "run", lambda *args, **kwargs: result)
@@ -213,9 +239,7 @@ def test_external_signer_rejects_oversized_signing_output(monkeypatch: pytest.Mo
         signer.sign(b"manifest")
 
 
-def test_tar_compression_ratio_and_archive_inspection_fail_closed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_tar_compression_ratio_and_archive_inspection_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     archive = tmp_path / "ratio.tar"
     data = b"x" * 100
     with tarfile.open(archive, "w") as output:
@@ -251,9 +275,7 @@ class _IdentitySigner:
         return signing.SignatureVerification(signature == b"signature:" + data, self.identity)
 
 
-def test_signer_metadata_and_structured_verification_fail_closed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_signer_metadata_and_structured_verification_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = tmp_path / "source"
     source.mkdir()
     (source / "safe.py").write_text("safe\n", encoding="utf-8")
@@ -279,9 +301,7 @@ def test_signer_metadata_and_structured_verification_fail_closed(
         verify(package, signer=_IdentitySigner())
 
 
-def test_signature_read_and_invalid_structured_result_fail_closed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_signature_read_and_invalid_structured_result_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = tmp_path / "source"
     source.mkdir()
     (source / "safe.py").write_text("safe\n", encoding="utf-8")

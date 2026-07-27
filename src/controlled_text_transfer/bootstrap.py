@@ -221,9 +221,7 @@ def _entry_fields(entry: dict[str, object]) -> tuple[str, str, str, bool] | None
         return None
     transfer_path = entry.get("transfer_path")
     original_path = entry.get("original_path")
-    expected_hash = (
-        entry.get("transfer_hash") or entry.get("transfer_sha256") or entry.get("transfer_sha512")
-    )
+    expected_hash = entry.get("transfer_hash") or entry.get("transfer_sha256") or entry.get("transfer_sha512")
     if not (
         isinstance(transfer_path, str)
         and transfer_path
@@ -270,9 +268,7 @@ def _restore_from_dir(package_dir: Path, staging: Path) -> None:
             if expanded > MAX_ZIP_EXPANDED_BYTES:
                 raise BootstrapError("package directory exceeds expanded-size limit")
             if name == "ctt-manifest.sig.txt":
-                raise BootstrapError(
-                    "bootstrap cannot authenticate signed packages; use ctt restore"
-                )
+                raise BootstrapError("bootstrap cannot authenticate signed packages; use ctt restore")
             if name == "ctt-manifest.json.txt":
                 manifests.append(candidate)
     if not manifests:
@@ -322,15 +318,12 @@ def _validated_zip_members(archive: zipfile.ZipFile) -> dict[str, zipfile.ZipInf
             raise BootstrapError(f"non-regular ZIP member rejected: {normalized}")
         if info.file_size > MAX_ZIP_MEMBER_BYTES:
             raise BootstrapError(
-                "ZIP member exceeds the security limit of "
-                f"{MAX_ZIP_MEMBER_BYTES} bytes: {normalized}"
+                "ZIP member exceeds the security limit of " f"{MAX_ZIP_MEMBER_BYTES} bytes: {normalized}"
             )
         expanded += info.file_size
         if expanded > MAX_ZIP_EXPANDED_BYTES:
             raise BootstrapError("ZIP archive exceeds expanded-size limit")
-        if info.file_size and (
-            info.compress_size == 0 or info.file_size > info.compress_size * MAX_COMPRESSION_RATIO
-        ):
+        if info.file_size and (info.compress_size == 0 or info.file_size > info.compress_size * MAX_COMPRESSION_RATIO):
             raise BootstrapError(f"ZIP member exceeds compression-ratio limit: {normalized}")
         validated[normalized] = info
     return validated
@@ -345,9 +338,7 @@ def _read_zip_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int
             chunks.append(chunk)
             total += len(chunk)
             if total > limit:
-                raise BootstrapError(
-                    f"ZIP member exceeds the security limit of {limit} bytes: {info.filename}"
-                )
+                raise BootstrapError(f"ZIP member exceeds the security limit of {limit} bytes: {info.filename}")
     if total != info.file_size:
         raise BootstrapError(f"ZIP member size changed while reading: {info.filename}")
     return b"".join(chunks)
@@ -362,14 +353,10 @@ def _restore_from_zip(zip_path: Path, staging: Path) -> None:
         raise BootstrapError(f"invalid package source: {zip_path}") from error
     with archive:
         members = _validated_zip_members(archive)
-        signature_names = [
-            name for name in members if PurePosixPath(name).name == "ctt-manifest.sig.txt"
-        ]
+        signature_names = [name for name in members if PurePosixPath(name).name == "ctt-manifest.sig.txt"]
         if signature_names:
             raise BootstrapError("bootstrap cannot authenticate signed packages; use ctt restore")
-        manifest_names = [
-            name for name in members if PurePosixPath(name).name == "ctt-manifest.json.txt"
-        ]
+        manifest_names = [name for name in members if PurePosixPath(name).name == "ctt-manifest.json.txt"]
         if not manifest_names:
             raise BootstrapError("ctt-manifest.json.txt not found in ZIP archive")
         if len(manifest_names) != 1:
@@ -401,12 +388,8 @@ def _restore_from_zip(zip_path: Path, staging: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point for bootstrap restoration."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "package_source", type=Path, help="Path to .txt package directory or ZIP archive"
-    )
-    parser.add_argument(
-        "destination", type=Path, help="Destination directory for restored CTT source"
-    )
+    parser.add_argument("package_source", type=Path, help="Path to .txt package directory or ZIP archive")
+    parser.add_argument("destination", type=Path, help="Destination directory for restored CTT source")
 
     args = parser.parse_args(argv)
     try:

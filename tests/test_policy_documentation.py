@@ -18,12 +18,8 @@ def test_repository_policy_examples_parse(filename: str):
     assert policy.profile == "generic-text-v1"
 
 
-def test_every_documented_yaml_policy_example_parses(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    fake_blake3 = SimpleNamespace(
-        blake3=lambda data: SimpleNamespace(hexdigest=lambda: f"blake3:{data.hex()}")
-    )
+def test_every_documented_yaml_policy_example_parses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    fake_blake3 = SimpleNamespace(blake3=lambda data: SimpleNamespace(hexdigest=lambda: f"blake3:{data.hex()}"))
     monkeypatch.setitem(sys.modules, "blake3", fake_blake3)
     documentation = (REPOSITORY / "docs" / "policy.md").read_text(encoding="utf-8")
     examples = re.findall(r"```yaml\n(.*?)```", documentation, flags=re.DOTALL)

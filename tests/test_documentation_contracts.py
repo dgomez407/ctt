@@ -58,11 +58,7 @@ def test_documented_policy_yaml_is_parseable(tmp_path: Path, monkeypatch):
                 type(
                     "Blake3Module",
                     (),
-                    {
-                        "blake3": staticmethod(
-                            lambda _data: type("Hash", (), {"hexdigest": lambda self: "0" * 64})()
-                        )
-                    },
+                    {"blake3": staticmethod(lambda _data: type("Hash", (), {"hexdigest": lambda self: "0" * 64})())},
                 ),
             )
         path = tmp_path / f"policy-{index}.yaml"
@@ -96,10 +92,7 @@ def test_security_documentation_covers_required_residual_risks():
 
 def test_markdown_relative_links_use_explicit_relative_paths_and_exist():
     ignore_dirs = {".venv", ".pytest_cache", ".git", "build", "dist"}
-    md_files = [
-        path for path in ROOT.rglob("*.md")
-        if not any(part in ignore_dirs for part in path.parts)
-    ]
+    md_files = [path for path in ROOT.rglob("*.md") if not any(part in ignore_dirs for part in path.parts)]
     link_pattern = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
     for md_file in md_files:
@@ -114,13 +107,10 @@ def test_markdown_relative_links_use_explicit_relative_paths_and_exist():
                 continue
 
             assert target_path.startswith(("./", "../")), (
-                f"Relative link '{target}' in {md_file.relative_to(ROOT)} "
-                "must start with './' or '../'"
+                f"Relative link '{target}' in {md_file.relative_to(ROOT)} " "must start with './' or '../'"
             )
 
             resolved = (md_file.parent / target_path).resolve()
             assert resolved.exists(), (
-                f"Link target '{target}' in {md_file.relative_to(ROOT)} "
-                f"does not exist (resolved to {resolved})"
+                f"Link target '{target}' in {md_file.relative_to(ROOT)} " f"does not exist (resolved to {resolved})"
             )
-

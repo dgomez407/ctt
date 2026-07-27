@@ -159,6 +159,7 @@ def test_security_scans_cover_application_and_development_scripts():
     report_script = Path("scripts/report.py").read_text(encoding="utf-8")
 
     assert "bandit -r src scripts" in run_script
+    assert "pymarkdown scan ." in run_script
     assert '"bandit", "-r", "src", "scripts"' in report_script
 
 

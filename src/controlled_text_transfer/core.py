@@ -138,9 +138,7 @@ def digest(data: bytes, algorithm: str = "sha256") -> str:
         try:
             import blake3
         except ImportError as exc:
-            raise TransferError(
-                "blake3 requested but optional dependency is not installed"
-            ) from exc
+            raise TransferError("blake3 requested but optional dependency is not installed") from exc
         return cast(str, blake3.blake3(data).hexdigest())
     return hashlib.new(algorithm, data).hexdigest()
 
@@ -250,9 +248,7 @@ class Policy:
 
     def validate(self) -> CDSProfile:
         """Validate every field and hash dependency before source traversal."""
-        if not isinstance(self.extensions, set) or any(
-            not isinstance(item, str) for item in self.extensions
-        ):
+        if not isinstance(self.extensions, set) or any(not isinstance(item, str) for item in self.extensions):
             raise _policy_error("extensions must be a set of strings")
         if not isinstance(self.names, set) or any(not isinstance(item, str) for item in self.names):
             raise _policy_error("names must be a set of strings")
@@ -281,10 +277,7 @@ class Policy:
         for name, value in integer_fields.items():
             if not isinstance(value, int) or isinstance(value, bool) or value < 1:
                 raise _policy_error(f"{name} must be an integer of at least 1")
-        if (
-            not isinstance(self.hash_algorithm, str)
-            or self.hash_algorithm not in APPROVED_HASH_ALGORITHMS
-        ):
+        if not isinstance(self.hash_algorithm, str) or self.hash_algorithm not in APPROVED_HASH_ALGORITHMS:
             raise _policy_error("unsupported hash_algorithm")
         if not isinstance(self.package_format, str) or self.package_format not in PACKAGE_FORMATS:
             raise _policy_error("unsupported package_format")
@@ -460,10 +453,7 @@ class FileRecord:
         if any(not isinstance(values[name], str) for name in string_fields):
             raise TransferError("invalid manifest: invalid file record string")
         integer_fields = ("original_size", "transfer_size", "mode")
-        if any(
-            not isinstance(values[name], int) or isinstance(values[name], bool)
-            for name in integer_fields
-        ):
+        if any(not isinstance(values[name], int) or isinstance(values[name], bool) for name in integer_fields):
             raise TransferError("invalid manifest: invalid file record integer")
         if values["original_size"] < 0 or values["transfer_size"] < 0:
             raise TransferError("invalid manifest: negative file size")
@@ -475,9 +465,7 @@ class FileRecord:
                 character not in "0123456789abcdef" for character in value
             ):
                 raise TransferError("invalid manifest: invalid file hash")
-        if not isinstance(values["bom_added"], bool) or not isinstance(
-            values["original_bom"], bool
-        ):
+        if not isinstance(values["bom_added"], bool) or not isinstance(values["original_bom"], bool):
             raise TransferError("invalid manifest: invalid file record boolean")
         return cls(**values)
 
@@ -503,9 +491,7 @@ class Manifest:
     def read(cls, path: Path) -> Manifest:
         """Read and validate a manifest with controlled schema errors."""
         try:
-            raw = json.loads(
-                _read_stable_file(path, MAX_MANIFEST_BYTES, "manifest").decode("utf-8-sig")
-            )
+            raw = json.loads(_read_stable_file(path, MAX_MANIFEST_BYTES, "manifest").decode("utf-8-sig"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise TransferError("invalid manifest: invalid JSON") from exc
         return cls.from_dict(raw)
@@ -580,9 +566,7 @@ def _safe_relative(root: Path, candidate: Path) -> Path:
 
 def _ignored(rel: str, patterns: Iterable[str]) -> bool:
     return any(
-        fnmatch.fnmatch(rel, p) or fnmatch.fnmatch(Path(rel).name, p)
-        for p in patterns
-        if p and not p.startswith("#")
+        fnmatch.fnmatch(rel, p) or fnmatch.fnmatch(Path(rel).name, p) for p in patterns if p and not p.startswith("#")
     )
 
 
@@ -622,18 +606,12 @@ def _content_reasons(text: str, policy: Policy, profile: CDSProfile) -> list[str
     reasons: list[str] = []
     if any(ord(character) < 32 and character not in "\t\r\n" for character in text):
         reasons.append("control_character")
-    if (not policy.allow_unicode or not profile.allow_unicode) and any(
-        ord(character) > 127 for character in text
-    ):
+    if (not policy.allow_unicode or not profile.allow_unicode) and any(ord(character) > 127 for character in text):
         reasons.append("unicode_not_allowed")
     without_crlf = text.replace("\r\n", "")
     if "\r" in without_crlf:
         reasons.append("unsupported_line_endings")
-    if (
-        not policy.allow_mixed_line_endings
-        and "\r\n" in text
-        and ("\n" in without_crlf or "\r" in without_crlf)
-    ):
+    if not policy.allow_mixed_line_endings and "\r\n" in text and ("\n" in without_crlf or "\r" in without_crlf):
         reasons.append("mixed_line_endings")
     if any(len(line) > policy.max_line_length for line in text.splitlines()):
         reasons.append("line_too_long")
@@ -653,9 +631,7 @@ def _rejected_decision(rel: str, reasons: list[str]) -> PreflightDecision:
     )
 
 
-def _scan_source(
-    source: Path, policy: Policy
-) -> tuple[PreflightReport, dict[str, bytes], dict[str, int]]:
+def _scan_source(source: Path, policy: Policy) -> tuple[PreflightReport, dict[str, bytes], dict[str, int]]:
     profile = policy.validate()
     source = source.resolve()
     if not source.is_dir():
@@ -667,9 +643,7 @@ def _scan_source(
     modes: dict[str, int] = {}
     accepted_files = 0
     accepted_bytes = 0
-    paths = sorted(
-        path for path in source.rglob("*") if path.is_file() and path.name != policy.ignore_file
-    )
+    paths = sorted(path for path in source.rglob("*") if path.is_file() and path.name != policy.ignore_file)
     for path in paths:
         if _is_link(path):
             rel = path.relative_to(source).as_posix()
@@ -743,11 +717,7 @@ def _scan_source(
                 transformations=(
                     [
                         "append_txt_suffix",
-                        *(
-                            ["add_utf8_bom"]
-                            if policy.add_bom and not data.startswith(b"\xef\xbb\xbf")
-                            else []
-                        ),
+                        *(["add_utf8_bom"] if policy.add_bom and not data.startswith(b"\xef\xbb\xbf") else []),
                     ]
                     if not reasons
                     else []
@@ -1005,16 +975,11 @@ def _payload_files(payload: Path) -> list[Path]:
         for name in directories:
             candidate = current_path / name
             if _is_link(candidate):
-                raise TransferError(
-                    f"linked package path is not allowed: {candidate.relative_to(payload)}"
-                )
+                raise TransferError(f"linked package path is not allowed: {candidate.relative_to(payload)}")
         for name in filenames:
             candidate = current_path / name
             if _is_link(candidate):
-                raise TransferError(
-                    "symlink transfer file is not allowed: "
-                    f"{candidate.relative_to(payload.parent)}"
-                )
+                raise TransferError("symlink transfer file is not allowed: " f"{candidate.relative_to(payload.parent)}")
             files.append(candidate)
     return files
 
@@ -1375,11 +1340,7 @@ def _restored_bytes(package: Path, record: FileRecord, algorithm: str) -> bytes:
         f"transfer file {record.transfer_path}",
     )
     data = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
-    data = (
-        b"\xef\xbb\xbf" + data
-        if record.original_bom and not data.startswith(b"\xef\xbb\xbf")
-        else data
-    )
+    data = b"\xef\xbb\xbf" + data if record.original_bom and not data.startswith(b"\xef\xbb\xbf") else data
     if len(data) != record.original_size:
         raise TransferError(f"restored size mismatch: {record.original_path}")
     if digest(data, algorithm) != record.original_hash:

@@ -120,8 +120,7 @@ def clean_repository(
             pass
         else:
             raise CleanupError(
-                "refusing to remove the active Python environment; "
-                "run this script with a system Python interpreter"
+                "refusing to remove the active Python environment; " "run this script with a system Python interpreter"
             )
 
     for target in targets:
@@ -140,9 +139,7 @@ def clean_repository(
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Remove reproducible repository caches and build artifacts."
-    )
+    parser = argparse.ArgumentParser(description="Remove reproducible repository caches and build artifacts.")
     parser.add_argument("--dry-run", action="store_true", help="list targets without deleting")
     parser.add_argument(
         "--environment",

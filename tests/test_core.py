@@ -209,9 +209,7 @@ def test_scan_source_handles_symlinks_and_escaping_paths_gracefully(tmp_path: Pa
         assert "ignored" in reasons_by_path["link_ignored.py"]
 
 
-def test_scan_source_handles_escaping_path_gracefully(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-):
+def test_scan_source_handles_escaping_path_gracefully(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     from controlled_text_transfer import core
     from controlled_text_transfer.core import _scan_source
 

@@ -116,9 +116,7 @@ def test_clean_repository_removes_linked_cache_without_following_it(tmp_path: Pa
     assert marker.is_file()
 
 
-def test_discover_targets_does_not_follow_windows_reparse_points(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_discover_targets_does_not_follow_windows_reparse_points(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     linked = tmp_path / "junction"
     linked.mkdir()
     nested_cache = linked / "__pycache__"
@@ -133,9 +131,7 @@ def test_discover_targets_does_not_follow_windows_reparse_points(
     assert nested_cache not in discover_targets(tmp_path)
 
 
-def test_discover_targets_includes_linked_cache_without_following_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_discover_targets_includes_linked_cache_without_following_it(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     linked_cache = tmp_path / "src" / "__pycache__"
     linked_cache.mkdir(parents=True)
     original = Path.is_junction
@@ -148,9 +144,7 @@ def test_discover_targets_includes_linked_cache_without_following_it(
     assert discover_targets(tmp_path) == (linked_cache,)
 
 
-def test_remove_target_uses_junction_safe_directory_removal(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_remove_target_uses_junction_safe_directory_removal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     junction = tmp_path / "junction"
     junction.mkdir()
     monkeypatch.setattr(Path, "is_junction", lambda path: path == junction)
@@ -202,9 +196,7 @@ def test_clean_repository_rejects_a_discovered_target_outside_repository(
     assert outside.is_dir()
 
 
-def test_clean_repository_rejects_an_unapproved_discovered_target(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_clean_repository_rejects_an_unapproved_discovered_target(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = tmp_path / "src"
     source.mkdir()
     monkeypatch.setattr(cleanup, "discover_targets", lambda *_args, **_kwargs: (source,))
@@ -215,9 +207,7 @@ def test_clean_repository_rejects_an_unapproved_discovered_target(
     assert source.is_dir()
 
 
-def test_clean_repository_reports_filesystem_removal_failures(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_clean_repository_reports_filesystem_removal_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     artifact = tmp_path / "build"
     artifact.mkdir()
 
