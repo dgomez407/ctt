@@ -212,8 +212,8 @@ def test_ci_workflow_pins_current_setup_actions_to_full_shas():
         ),
         (
             "codecov/codecov-action",
-            "13ce065b78766368d19f0164828791ec4e6bd63d",
-            "v5.4.0",
+            "0fb7174895f61a3b6b78fc075e0cd60383518dac",
+            "v5.5.5",
         ),
     ]
 
