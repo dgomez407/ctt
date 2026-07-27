@@ -1,6 +1,6 @@
 # Operational Runbook
 
-[Documentation index](README.md) | [Repository home](../README.md)
+[Documentation index](./README.md) | [Repository home](../README.md)
 
 ## Generate Review Reports
 
@@ -58,7 +58,7 @@ When transferring CTT to an isolated destination network that does not yet have 
 ## Prepare
 
 1. Review `ctt.yaml` and `.cttignore`.
-   See the [policy reference](policy.md) for field semantics and examples.
+   See the [policy reference](./policy.md) for field semantics and examples.
 2. Run preflight and retain its machine-readable report:
 
    ```text
@@ -127,7 +127,7 @@ manifest data. The current limits are a 2 MiB manifest, 256 KiB signature,
 128 MiB archive input, 256 MiB expansion, 2,000 members, 10 MiB per member,
 100:1 compression ratio, 16 path components, and 180 path characters. Units
 are binary. Split larger transfers into independently verified packages; see
-the [security hardening contract](security-hardening.md).
+the [security hardening contract](./security-hardening.md).
 
 ## Failure handling
 

@@ -15,6 +15,7 @@ def test_documented_security_ceilings_match_runtime_constants():
         "Archive input": (core.MAX_ARCHIVE_INPUT_BYTES, "128 MiB"),
         "Expanded archive": (core.MAX_ARCHIVE_BYTES, "256 MiB"),
         "Archive members": (core.MAX_ARCHIVE_MEMBERS, "2,000"),
+        "Manifest file records": (core.MAX_ARCHIVE_MEMBERS, "2,000"),
         "Individual member or payload file": (core.MAX_ARCHIVE_MEMBER_BYTES, "10 MiB"),
         "Compression ratio": (core.MAX_COMPRESSION_RATIO, "100:1"),
         "Relative path depth": (core.MAX_SECURITY_PATH_DEPTH, "16 components"),
@@ -39,6 +40,7 @@ def test_documented_security_ceilings_match_runtime_constants():
     assert signing.MAX_SIGNATURE_BYTES == 256 * 1024
     assert core.MAX_ARCHIVE_INPUT_BYTES == 128 * 1024 * 1024
     assert core.MAX_ARCHIVE_BYTES == 256 * 1024 * 1024
+    assert core.MAX_ARCHIVE_MEMBERS == 2_000
     assert core.MAX_ARCHIVE_MEMBER_BYTES == 10 * 1024 * 1024
     assert core.STREAM_BUFFER_BYTES == 64 * 1024
 
@@ -90,3 +92,35 @@ def test_security_documentation_covers_required_residual_risks():
         "malware",
     ):
         assert claim.lower() in documents
+
+
+def test_markdown_relative_links_use_explicit_relative_paths_and_exist():
+    ignore_dirs = {".venv", ".pytest_cache", ".git", "build", "dist"}
+    md_files = [
+        path for path in ROOT.rglob("*.md")
+        if not any(part in ignore_dirs for part in path.parts)
+    ]
+    link_pattern = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+    for md_file in md_files:
+        content = md_file.read_text(encoding="utf-8")
+        for match in link_pattern.finditer(content):
+            _text, target = match.groups()
+            target = target.strip()
+            if target.startswith(("http://", "https://", "mailto:", "#", "file://")):
+                continue
+            target_path = target.split("#")[0]
+            if not target_path:
+                continue
+
+            assert target_path.startswith(("./", "../")), (
+                f"Relative link '{target}' in {md_file.relative_to(ROOT)} "
+                "must start with './' or '../'"
+            )
+
+            resolved = (md_file.parent / target_path).resolve()
+            assert resolved.exists(), (
+                f"Link target '{target}' in {md_file.relative_to(ROOT)} "
+                f"does not exist (resolved to {resolved})"
+            )
+

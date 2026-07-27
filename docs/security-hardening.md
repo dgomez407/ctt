@@ -1,6 +1,6 @@
 # Security Hardening Contract
 
-[Documentation index](README.md) | [Security guidance](../SECURITY.md)
+[Documentation index](./README.md) | [Security guidance](../SECURITY.md)
 
 CTT treats source trees, package directories, archives, manifests, signature
 sidecars, and restore destinations as separate trust boundaries. It is not a

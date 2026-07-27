@@ -2,7 +2,7 @@
 
 [Repository home](../README.md)
 
-The [`scripts/`](.) directory contains the development dispatcher [`run.sh`](run.sh) and standalone Python and Bash scripts supporting build, testing, quality audits, reporting, release management, and repository cleanup.
+The [`scripts/`](./.) directory contains the development dispatcher [`run.sh`](./run.sh) and standalone Python and Bash scripts supporting build, testing, quality audits, reporting, release management, and repository cleanup.
 
 ---
 
@@ -146,19 +146,19 @@ bash scripts/run.sh clean --environment
 
 The underlying Python and Bash scripts in `scripts/` can also be invoked directly:
 
-- **[`check_release.py`](check_release.py)**: Validates repository release metadata.
+- **[`check_release.py`](./check_release.py)**: Validates repository release metadata.
   ```bash
   uv run python scripts/check_release.py v0.1.0 [--trusted-ref origin/main]
   ```
-- **[`ctt-release-check.sh`](ctt-release-check.sh)**: Performs offline snapshot release verification against local Git history.
+- **[`ctt-release-check.sh`](./ctt-release-check.sh)**: Performs offline snapshot release verification against local Git history.
   ```bash
   bash scripts/ctt-release-check.sh [repository] [tag] [release-ref]
   ```
-- **[`clean.py`](clean.py)**: Performs safe artifact cleanup.
+- **[`clean.py`](./clean.py)**: Performs safe artifact cleanup.
   ```bash
   uv run python scripts/clean.py [--dry-run] [--environment]
   ```
-- **[`report.py`](report.py)**: Generates the HTML quality report dashboard.
+- **[`report.py`](./report.py)**: Generates the HTML quality report dashboard.
   ```bash
   uv run python scripts/report.py [--pydoc-only] [--output PATH]
   ```

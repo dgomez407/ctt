@@ -460,6 +460,20 @@ def test_bootstrap_stable_reader_rejects_metadata_and_read_races(
     with pytest.raises(BootstrapError, match="regular unlinked file"):
         bootstrap._read_stable(payload, 10, "payload")
 
+    read_called = False
+
+    class UnexpectedStream(Stream):
+        def read(self, size: int = -1) -> bytes:
+            nonlocal read_called
+            read_called = True
+            return super().read(size)
+
+    opened_different = SimpleNamespace(st_mode=stat.S_IFREG, st_dev=1, st_ino=2, st_size=1)
+    monkeypatch.setattr(bootstrap.os, "fstat", lambda _fd: opened_different)
+    monkeypatch.setattr(Path, "open", lambda _self, _mode: UnexpectedStream(b"x"))
+    with pytest.raises(BootstrapError, match="changed before being read"):
+        bootstrap._read_stable(payload, 10, "payload")
+    assert not read_called
     monkeypatch.setattr(bootstrap.os, "fstat", lambda _fd: regular)
     monkeypatch.setattr(Path, "open", lambda _self, _mode: Stream(b"ab"))
     with pytest.raises(BootstrapError, match="exceeds 1 bytes"):

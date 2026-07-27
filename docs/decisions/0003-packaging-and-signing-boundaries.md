@@ -1,6 +1,6 @@
 # ADR-003: Separate packaging from externally managed signing
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

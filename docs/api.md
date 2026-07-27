@@ -1,6 +1,6 @@
 # CLI and Library API
 
-[Documentation index](README.md) | [Repository home](../README.md)
+[Documentation index](./README.md) | [Repository home](../README.md)
 
 ## CLI commands
 
@@ -13,8 +13,8 @@
 | `diff TRANSFER SOURCE` | Report source/package differences without writing |
 
 Options are scoped to commands where they have an effect. See the
-[complete CLI option reference](cli.md) for purposes and examples, and the
-[policy reference](policy.md) for policy fields. `verify` and `restore` are
+[complete CLI option reference](./cli.md) for purposes and examples, and the
+[policy reference](./policy.md) for policy fields. `verify` and `restore` are
 manifest-driven and do not accept `--policy`.
 
 `--sign` and authenticated verification require an application that calls
@@ -62,5 +62,5 @@ These signing hooks intentionally do not manage private keys or passphrases.
 CLI embedding may inject a trusted `ManifestSigner` into `main`; transferred
 manifests and policy files never select executable commands.
 All APIs enforce the immutable limits in the
-[security hardening contract](security-hardening.md); violations raise
+[security hardening contract](./security-hardening.md); violations raise
 `TransferError` (or `ValueError`/`RuntimeError` at the low-level signer adapter).

@@ -119,8 +119,8 @@ def test_automation_documentation_matches_workflow_contracts():
 
     assert not (ROOT / ".github" / "README.md").exists()
     assert "## GitHub automation" in readme
-    assert "[Workflow definitions](.github/workflows/README.md)" in readme
-    assert "[`dependabot.yml`](.github/dependabot.yml)" in readme
+    assert "[Workflow definitions](./.github/workflows/README.md)" in readme
+    assert "[`dependabot.yml`](./.github/dependabot.yml)" in readme
     assert "repository `ctt`" in readme
     assert "commit belongs to `origin/main`" in readme
     for documentation in (workflow_docs, security, decision):

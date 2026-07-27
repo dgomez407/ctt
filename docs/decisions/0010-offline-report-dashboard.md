@@ -1,6 +1,6 @@
 # ADR-010: Generate an offline report dashboard
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

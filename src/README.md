@@ -7,4 +7,4 @@ installed package rather than accidentally from the working directory.
 
 ## Packages
 
-- [Controlled Text Transfer package](controlled_text_transfer/README.md)
+- [Controlled Text Transfer package](./controlled_text_transfer/README.md)

@@ -60,7 +60,7 @@ junctions, and non-regular files and comparing pre-open, opened, and post-open
 identities. Archive ingestion streams observed bytes into staging under
 immutable receiver ceilings that transferred data cannot raise. Exact binary
 units, limits, compatibility effects, and test evidence are in the
-[security hardening contract](docs/security-hardening.md).
+[security hardening contract](./docs/security-hardening.md).
 
 Identity-bearing manifests require an exact identity returned by the trusted
 verifier. `key_label` is informational only; integrity success does not prove

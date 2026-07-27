@@ -1,6 +1,6 @@
 # ADR-008: Adopt the Controlled Text Transfer product identity
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

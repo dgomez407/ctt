@@ -1,6 +1,6 @@
 # ADR-014: Use stable, bounded, authenticated package ingestion
 
-[ADR index](README.md) | [Security contract](../security-hardening.md)
+[ADR index](./README.md) | [Security contract](../security-hardening.md)
 
 ## Status
 

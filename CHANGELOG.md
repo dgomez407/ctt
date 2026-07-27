@@ -5,7 +5,12 @@
 ### Added
 
 - Structured signature verification with authenticated signer identities.
-- ADR-014, a complete security hardening contract, and a deferred security backlog.
+- Architecture Decision Record
+  [ADR-014](./docs/decisions/0014-stable-bounded-authenticated-ingestion.md)
+  enforces a stable, bounded, authenticated package ingestion.
+- Architecture Decision Record
+  [ADR-015](./docs/decisions/0015-pin-python-312-security-baseline.md)
+  pinning Python 3.12.13 as the minimum security baseline.
 - Dynamic Codecov coverage badge in `README.md` and automated coverage
   upload step in `.github/workflows/ci.yml`.
 - GitHub repository link and PyPI monthly download status badges in `README.md`.
@@ -18,14 +23,15 @@
   streams observed bytes under immutable conservative CDS ceilings.
 - Hardened the zero-dependency bootstrap with stable bounded directory and ZIP
   ingestion while preserving unsigned self-package restoration compatibility.
-
 - Raised the minimum supported runtime to Python 3.12.13 and pinned the
   minimum-runtime CI and release jobs to that security patch.
+- Report a missing authenticated signer identity with the correct verification error.
+- Reject a swapped bootstrap file descriptor before reading any content.
 
 ### Fixed
+
 - Made stable file and archive inspection independent of Python-version-specific
   `pathlib` query call ordering.
-
 
 ### Security
 
@@ -63,7 +69,7 @@
 - Default ignore pattern fallback (`DEFAULT_IGNORE_PATTERNS`) when `.cttignore` is absent.
 - Comprehensive subcommand, flag, and utility reference guide in `scripts/README.md`.
 - Architecture Decision Record
-  [ADR-013](docs/decisions/0013-release-alignment-and-rollback-operations.md)
+  [ADR-013](./docs/decisions/0013-release-alignment-and-rollback-operations.md)
   for release alignment and unrelease operations.
 
 ### Changed

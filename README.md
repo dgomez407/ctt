@@ -8,7 +8,7 @@
 
 **Controlled Text Transfer (`ctt`)** is a security-oriented CLI tool and Python library for transferring files across strict security boundaries—such as Cross-Domain Solutions (CDS), air-gapped networks, or restricted file transfer drops—that only permit plain text (`.txt`) files.
 
-`ctt` validates source files against explicit compliance policies, packages allowed files into a `.txt`-only transfer format (preserving full original paths and metadata in a signed-ready JSON manifest), and restores exact byte-identical originals at the destination.
+The `ctt` tool validates source files against explicit compliance policies, packages allowed files into a `.txt`-only transfer format (preserving full original paths and metadata in a signed-ready JSON manifest), and restores exact byte-identical originals at the destination.
 
 Python 3.12.13 or newer is required. Earlier 3.12 patch releases omit upstream
 security fixes included in 3.12.13.
@@ -17,7 +17,7 @@ security fixes included in 3.12.13.
 
 ## Core Transfer Workflow
 
-```
+```text
 [ Source Directory ]
          │
          ▼
@@ -67,13 +67,14 @@ ctt restore ./transfer_dir ./restored_dir
 ```
 
 > **Path Roles & Optional Flags**:
+>
 > - **Directory Arguments**: `./source_dir` is the input folder containing files; `./transfer_dir` is the output transfer folder (or archive path); `./restored_dir` is the new output folder where original files are recreated.
 > - **Zero Required Flags**: `ctt` works out of the box with zero flags using built-in safe defaults (`generic-text-v1` profile, common text allowlists, SHA-256).
 > - **`--json`** (`preflight`): Optional flag to output complete machine-readable JSON details instead of a summary text report.
 > - **`--strict`** (`prepare`): Optional flag to fail closed and create nothing if any single candidate file is rejected.
 > - **`--policy PATH`**: Optional flag to load custom YAML rules (e.g. `ctt.yaml`) instead of built-in defaults.
 
-For detailed quickstart guidance, see [README-quickstart.md](README-quickstart.md).
+For detailed quickstart guidance, see [README-quickstart.md](./README-quickstart.md).
 
 ---
 
@@ -84,7 +85,7 @@ The `ctt` CLI cleanly separates end-user transfer operations from developer main
 ### Primary Transfer Commands
 
 | Command | Purpose | Default Usage | Expressive Usage with Options |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `preflight` | Produce a read-only policy compatibility report | `ctt preflight ./source_dir` | `ctt preflight ./source_dir --policy ctt.yaml --json` |
 | `prepare` | Package allowlisted files into `.txt` transfer format | `ctt prepare ./source_dir ./transfer_dir` | `ctt prepare ./source_dir ./dist/pkg.zip --policy ctt.yaml --strict --json-report report.json --log-json` |
 | `verify` | Verify package integrity, manifest, and signatures | `ctt verify ./transfer_dir` | `ctt verify ./transfer.zip --require-signature --log-json` |
@@ -93,7 +94,7 @@ The `ctt` CLI cleanly separates end-user transfer operations from developer main
 ### Secondary Utility Commands
 
 | Command | Purpose | Default Usage | Expressive Usage with Options |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `diff` | Compare transfer package against source directory | `ctt diff ./transfer_dir ./source_dir` | `ctt diff ./transfer.zip ./source_dir --policy ctt.yaml --json` |
 | `self-package` | Package CTT itself into a `.txt`-only self-bootstrapping bundle | `ctt self-package ./ctt-bootstrap.zip` | `ctt self-package ./dist/ctt-bootstrap.tgz --source . --format tgz` |
 
@@ -104,7 +105,9 @@ The `ctt` CLI cleanly separates end-user transfer operations from developer main
 Here are common operational scenarios showing how to combine additional CLI options:
 
 ### 1. Pre-Transfer Audit and Reporting
+
 Evaluate a source directory before transfer:
+
 ```bash
 # Summary stdout report using built-in policy defaults
 ctt preflight ./source_dir
@@ -114,7 +117,9 @@ ctt preflight ./source_dir --policy ctt.yaml --json > preflight-audit.json
 ```
 
 ### 2. Strict Packaging with Manifest Audit & Audit Logging
+
 Enforce strict validation (fail if any candidate file is rejected), save a preflight report, and output a JSON audit event to stderr:
+
 ```bash
 # Package into a ZIP archive with strict policy enforcement and audit outputs
 ctt prepare ./source_dir ./dist/transfer.zip \
@@ -125,7 +130,9 @@ ctt prepare ./source_dir ./dist/transfer.zip \
 ```
 
 ### 3. Signature Verification & Dry-Run Restoration
+
 Verify digital signatures and test restoration without writing to disk:
+
 ```bash
 # Verify transfer package requiring an authenticated digital signature
 ctt verify ./transfer.zip --require-signature --log-json
@@ -138,13 +145,17 @@ ctt restore ./transfer.zip ./restored_dir --require-signature --log-json
 ```
 
 ### 4. Package Comparison (`diff`)
+
 Inspect changes between a transfer package and a live source directory:
+
 ```bash
 ctt diff ./transfer_dir ./source_dir --policy ctt.yaml --json
 ```
 
 ### 5. Self-Bootstrapping Deployment Package
+
 Package the `ctt` application itself into a standalone `.txt`-only transfer bundle with embedded zero-dependency bootstrapper:
+
 ```bash
 ctt self-package ./dist/ctt-bootstrap.zip --format zip
 ```
@@ -155,21 +166,21 @@ rejects links, duplicate or encrypted members, and multiple manifests. Because t
 zero-dependency bootstrap has no trusted signer integration, it rejects signed
 packages. Use the installed `ctt restore` command to authenticate and restore them.
 
-
-For complete CLI flag documentation, see the [CLI option reference](docs/cli.md).
+For complete CLI flag documentation, see the [CLI option reference](./docs/cli.md).
 
 ---
 
 ## Policy and Compliance
 
 `ctt` uses an explicit policy-driven allowlist:
+
 - **Default Policy (No `--policy` flag required)**: UTF-8 decoding, explicit extension/name allowlists, SHA-256 hashes, and a 10 MiB per-file limit.
 - **Custom Policy (`--policy PATH`)**: Load custom rules from a YAML file (e.g. `ctt.yaml`).
 - **Ignored Files**: Files matching `.cttignore` or failing allowlist criteria are safely omitted from transfer.
 - **`generic-text-v1` Profile**: Enforces file count, aggregate size, path depth, character sets, line lengths, control character checks, and forbidden textual patterns.
 - **Hash Support**: SHA-256 (default), SHA-512 (`hash_algorithm: sha512`), and optional BLAKE3 (`uv sync --extra blake3`).
 
-See the [policy reference and examples](docs/policy.md) for full configuration details.
+See the [policy reference and examples](./docs/policy.md) for full configuration details.
 
 ---
 
@@ -184,10 +195,10 @@ See the [policy reference and examples](docs/policy.md) for full configuration d
 - **Authenticated Signer Identity**: Identity-bearing manifests require an exact
   identity returned by the trusted verifier; `key_label` is informational only.
 
-See the [security hardening contract](docs/security-hardening.md) for exact
+See the [security hardening contract](./docs/security-hardening.md) for exact
 binary-unit ceilings, compatibility rules, residual risks, and test evidence.
 
-See [SECURITY.md](SECURITY.md) for detailed security guidance.
+See [SECURITY.md](./SECURITY.md) for detailed security guidance.
 
 ---
 
@@ -212,7 +223,7 @@ bash scripts/run.sh clean --dry-run
 bash scripts/run.sh clean
 ```
 
-For full details on repository scripts and release workflows, see [Development scripts](scripts/README.md) and [AGENTS.md](AGENTS.md).
+For full details on repository scripts and release workflows, see [Development scripts](./scripts/README.md) and [AGENTS.md](./AGENTS.md).
 
 ---
 
@@ -223,8 +234,8 @@ release requirements documented for local development. It uses
 least-privilege permissions, immutable action references, and locked Python
 dependencies.
 
-- [Workflow definitions](.github/workflows/README.md)
-- [`dependabot.yml`](.github/dependabot.yml) maintains pinned GitHub Actions
+- [Workflow definitions](./.github/workflows/README.md)
+- [`dependabot.yml`](./.github/dependabot.yml) maintains pinned GitHub Actions
   dependencies.
 
 Releases use PyPI Trusted Publishing through `.github/workflows/release.yml`. Configure a pending GitHub publisher for project `controlled-text-transfer`, owner `dgomez407`, repository `ctt`, workflow `release.yml`, and environment `pypi`. After quality gates pass, push a version tag such as `v0.1.0` from a commit contained in `main`. The workflow verifies that the tagged commit belongs to `origin/main`, the tag, package version, README, and changelog agree; reruns the locked quality gates; validates the wheel and source distribution; and publishes them without a stored API token.
@@ -233,21 +244,21 @@ Releases use PyPI Trusted Publishing through `.github/workflows/release.yml`. Co
 
 ## Documentation Index
 
-- [Documentation index](docs/README.md)
-- [Operations runbook](docs/operations.md)
-- [Policy reference and examples](docs/policy.md)
-- [Complete CLI option reference](docs/cli.md)
-- [CLI and library API](docs/api.md)
-- [Security guidance](SECURITY.md)
-- [Architecture Decision Records](docs/decisions/README.md)
-- [Changelog](CHANGELOG.md)
-- [Contributor and agent guidelines](AGENTS.md)
-- [Repository-specific agent guidance](AGENTS-project.md)
-- [Gemini agent entry point](GEMINI.md)
+- [Documentation index](./docs/README.md)
+- [Operations runbook](./docs/operations.md)
+- [Policy reference and examples](./docs/policy.md)
+- [Complete CLI option reference](./docs/cli.md)
+- [CLI and library API](./docs/api.md)
+- [Security guidance](./SECURITY.md)
+- [Architecture Decision Records](./docs/decisions/README.md)
+- [Changelog](./CHANGELOG.md)
+- [Contributor and agent guidelines](./AGENTS.md)
+- [Repository-specific agent guidance](./AGENTS-project.md)
+- [Gemini agent entry point](./GEMINI.md)
 
 ### Repository Map
 
-- [GitHub workflow details](.github/workflows/README.md)
-- [Development scripts](scripts/README.md)
-- [Source code](src/README.md)
-- [Test suite](tests/README.md)
+- [GitHub workflow details](./.github/workflows/README.md)
+- [Development scripts](./scripts/README.md)
+- [Source code](./src/README.md)
+- [Test suite](./tests/README.md)

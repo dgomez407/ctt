@@ -1,6 +1,6 @@
 # ADR-009: Require Python 3.12
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

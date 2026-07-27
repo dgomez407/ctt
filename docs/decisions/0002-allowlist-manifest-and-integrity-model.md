@@ -1,6 +1,6 @@
 # ADR-002: Use an allowlist, versioned manifest, and fail-closed verification
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

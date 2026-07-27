@@ -67,6 +67,8 @@ def _read_stable(path: Path, limit: int, description: str) -> bytes:
             opened = os.fstat(stream.fileno())
             if _metadata_is_link(opened) or not stat.S_ISREG(opened.st_mode):
                 raise BootstrapError(f"{description} must be a regular unlinked file: {path}")
+            if _identity(before) != _identity(opened) or before.st_size != opened.st_size:
+                raise BootstrapError(f"{description} changed before being read: {path}")
             chunks: list[bytes] = []
             total = 0
             while chunk := stream.read(min(STREAM_BUFFER_BYTES, limit + 1 - total)):

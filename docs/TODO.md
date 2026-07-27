@@ -1,6 +1,6 @@
 # Deferred Security Hardening
 
-[Documentation index](README.md) | [Security contract](security-hardening.md)
+[Documentation index](./README.md) | [Security contract](./security-hardening.md)
 
 These items are intentionally deferred beyond ADR-014. Each requires its own
 threat-model review, executable requirements, tests, documentation, and

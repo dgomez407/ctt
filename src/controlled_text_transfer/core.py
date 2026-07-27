@@ -1232,6 +1232,8 @@ def _verify_directory(
                 if not verification.valid:
                     raise TransferError("manifest signature verification failed")
                 if expected_identity is not None:
+                    if verification.identity is None:
+                        raise TransferError("authenticated signer identity is required")
                     actual_identity = _validated_signer_identity(verification.identity)
                     if actual_identity != expected_identity:
                         raise TransferError("manifest signer identity mismatch")

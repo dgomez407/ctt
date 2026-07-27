@@ -1,6 +1,6 @@
 # Policy Reference
 
-[Documentation index](README.md) | [Repository home](../README.md)
+[Documentation index](./README.md) | [Repository home](../README.md)
 
 CTT policies are strict YAML objects used by `preflight`, `prepare`, and
 `diff`. Unknown fields, incorrect types, unsupported values, and limits below
@@ -19,7 +19,7 @@ Policy limits control sender-side selection and may be stricter than receiver
 limits. They cannot raise CTT's immutable verifier ceilings. For example,
 `max_files: 10000` does not permit a manifest or archive to exceed the
 receiver's 2,000-record/member ceilings. See the
-[security hardening contract](security-hardening.md) for exact binary-unit
+[security hardening contract](./security-hardening.md) for exact binary-unit
 limits. Split oversized transfers into separately verified packages.
 
 ## Fields

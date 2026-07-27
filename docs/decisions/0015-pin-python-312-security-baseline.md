@@ -1,6 +1,6 @@
 # ADR-015: Pin Python 3.12.13 as the minimum security baseline
 
-[ADR index](README.md) | [Security guidance](../../SECURITY.md)
+[ADR index](./README.md) | [Security guidance](../../SECURITY.md)
 
 ## Status
 

@@ -206,6 +206,12 @@ def test_identity_bearing_signature_requires_matching_authenticated_identity(tmp
     with pytest.raises(TransferError, match="signer identity mismatch"):
         verify(package, signer=WrongIdentitySigner(), require_signature=True)
 
+    class MissingIdentitySigner(IdentitySigner):
+        def verify(self, data: bytes, signature: bytes) -> SignatureVerification:
+            return SignatureVerification(signature == b"signature:" + data, None)
+
+    with pytest.raises(TransferError, match="authenticated signer identity is required"):
+        verify(package, signer=MissingIdentitySigner(), require_signature=True)
     with pytest.raises(TransferError, match="authenticated signer identity is required"):
         verify(package, signer=FakeSigner(), require_signature=True)
 

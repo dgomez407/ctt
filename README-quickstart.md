@@ -48,7 +48,7 @@ uv run ctt prepare --help
 uv run ctt verify --help
 ```
 
-The [complete CLI option reference](docs/cli.md) explains how and why to use
+The [complete CLI option reference](./docs/cli.md) explains how and why to use
 every option, including signing and machine-readable output.
 
 To preview or perform a cleanup of generated repository artifacts:
@@ -111,7 +111,7 @@ bash scripts/run.sh help
 
 The report command writes a browsable `reports/index.html`. Use
 `bash scripts/run.sh report --pydoc-only` for fast API documentation, or see
-the [scripts guide](scripts/README.md) for every generated report.
+the [scripts guide](./scripts/README.md) for every generated report.
 
 See [README.md](./README.md) for architecture and
 [docs/operations.md](./docs/operations.md) for operational guidance. See the

@@ -1,6 +1,6 @@
 # ADR-007: Remove the unused worker-count policy option
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

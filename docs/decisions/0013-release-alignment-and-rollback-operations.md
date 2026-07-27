@@ -1,6 +1,6 @@
 # ADR-013: Release alignment, preflight verification, and unrelease operations
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 
