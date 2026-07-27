@@ -6,6 +6,7 @@
 
 - Dynamic Codecov coverage badge in `README.md` and automated coverage upload step in `.github/workflows/ci.yml`.
 - GitHub repository link and PyPI monthly download status badges in `README.md`.
+- Repository `.git-blame-ignore-revs` configuration file to ignore bulk code formatting and line-ending normalization commits during `git blame` inspection.
 
 ### Changed
 
