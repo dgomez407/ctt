@@ -1,4 +1,4 @@
-# Controlled Text Transfer 0.2.0
+# Controlled Text Transfer 0.3.0
 
 **Package & Release:** [![PyPI Version](https://img.shields.io/pypi/v/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/) [![Python Versions](https://img.shields.io/pypi/pyversions/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/) [![PyPI License](https://img.shields.io/pypi/l/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/) [![PyPI Downloads](https://img.shields.io/pypi/dm/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
 

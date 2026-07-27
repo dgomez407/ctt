@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "controlled-text-transfer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Auditable text-only preparation and restoration for controlled file transfers"
 readme = "README.md"
 requires-python = ">=3.12.13"
