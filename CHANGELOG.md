@@ -1,9 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+
 ### Added
+
+- Dynamic Codecov coverage badge in `README.md` and automated coverage upload step in `.github/workflows/ci.yml`.
+- GitHub repository link and PyPI monthly download status badges in `README.md`.
+
 ### Changed
+
 ### Fixed
+
 ### Security
 
 ## [0.2.0] - 2026-07-26

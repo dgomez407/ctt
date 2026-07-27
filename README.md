@@ -3,11 +3,17 @@
 [![PyPI Version](https://img.shields.io/pypi/v/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
 [![PyPI License](https://img.shields.io/pypi/l/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
-[![CI](https://img.shields.io/github/actions/workflow/status/dgomez407/ctt/ci.yml?branch=main&label=CI)](https://github.com/dgomez407/ctt/actions)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
+[![CI](https://img.shields.io/github/actions/workflow/status/dgomez407/ctt/ci.yml?branch=main&label=CI)](https://github.com/dgomez407/ctt/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/dgomez407/ctt/release.yml?label=Release)](https://github.com/dgomez407/ctt/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/dgomez407/ctt/graph/badge.svg)](https://codecov.io/gh/dgomez407/ctt)
+[![Last Commit](https://img.shields.io/github/last-commit/dgomez407/ctt)](https://github.com/dgomez407/ctt/commits/main)
+[![GitHub Repository](https://img.shields.io/badge/github-dgomez407%2Fctt-181717?logo=github)](https://github.com/dgomez407/ctt)
 [![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/types-Mypy%20Strict-blue)](https://mypy-lang.org/)
 [![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+[![Dependabot](https://img.shields.io/badge/dependabot-active-brightgreen?logo=dependabot)](https://github.com/dgomez407/ctt/network/updates)
 
 **Controlled Text Transfer (`ctt`)** is a security-oriented CLI tool and Python library for transferring files across strict security boundaries—such as Cross-Domain Solutions (CDS), air-gapped networks, or restricted file transfer drops—that only permit plain text (`.txt`) files.
 
