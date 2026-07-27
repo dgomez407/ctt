@@ -186,6 +186,8 @@ def test_ci_workflow_uses_locked_canonical_quality_gate_for_supported_pythons():
     assert {"run": "uv sync --frozen --extra dev"} in steps
     assert {"run": "bash scripts/run.sh check"} in steps
     assert all("pip install" not in step.get("run", "") for step in steps)
+    codecov_step = next(step for step in steps if step.get("uses", "").startswith("codecov/codecov-action"))
+    assert codecov_step["with"]["token"] == "${{ secrets.CODECOV_TOKEN }}"  # noqa: S105
 
 
 def test_ci_workflow_pins_current_setup_actions_to_full_shas():
