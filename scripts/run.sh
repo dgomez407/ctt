@@ -115,9 +115,6 @@ case "$command" in
         uv run --extra dev bandit -r src scripts -q
         ;;
     report)
-        if python="$(default_python)"; then
-            exec "$python" scripts/report.py "$@"
-        fi
         exec uv run --extra dev python scripts/report.py "$@"
         ;;
     build)
