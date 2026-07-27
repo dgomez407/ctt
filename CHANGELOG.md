@@ -1,10 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+
 ### Added
+
+- Dynamic Codecov coverage badge in `README.md` and automated coverage upload step in `.github/workflows/ci.yml`.
+- GitHub repository link and PyPI monthly download status badges in `README.md`.
+- Repository `.git-blame-ignore-revs` configuration file to ignore bulk code formatting and line-ending normalization commits during `git blame` inspection.
+
 ### Changed
+
 ### Fixed
+
 ### Security
+
+- Option injection guards and positional argument separators in `scripts/ctt-release-check.sh` and `scripts/check_release.py`.
 
 ## [0.2.0] - 2026-07-26
 

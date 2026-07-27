@@ -28,7 +28,7 @@ def require_trusted_ref(repository: Path, trusted_ref: str) -> None:
     """Require the checked-out release commit to be contained in a trusted ref."""
     # The trusted CI ref is passed in a fixed argument vector; shell execution stays disabled.
     result = subprocess.run(  # nosec B603 B607
-        ["git", "merge-base", "--is-ancestor", "HEAD", trusted_ref],
+        ["git", "merge-base", "--is-ancestor", "HEAD", "--", trusted_ref],
         cwd=repository,
         check=False,
         capture_output=True,
