@@ -231,12 +231,83 @@ def test_signing_stable_reader_normalizes_filesystem_errors(tmp_path: Path, monk
 
 def test_external_signer_rejects_oversized_signing_output(monkeypatch: pytest.MonkeyPatch):
     result = SimpleNamespace(returncode=0, stdout=b"xx", stderr=b"")
-    monkeypatch.setattr(signing.subprocess, "run", lambda *args, **kwargs: result)
     monkeypatch.setattr(signing, "MAX_SIGNATURE_BYTES", 1)
     signer = signing.ExternalCommandSigner(["sign"], ["verify"])
+    monkeypatch.setattr(signer, "_run", lambda *args, **kwargs: result)
 
     with pytest.raises(RuntimeError, match="output exceeded"):
         signer.sign(b"manifest")
+
+
+def test_external_signer_fails_when_command_pipes_are_missing(monkeypatch: pytest.MonkeyPatch):
+    process = SimpleNamespace(
+        stdin=None,
+        stdout=io.BytesIO(),
+        stderr=io.BytesIO(),
+        kill=lambda: None,
+        wait=lambda: 0,
+    )
+    monkeypatch.setattr(signing.subprocess, "Popen", lambda *args, **kwargs: process)
+    signer = signing.ExternalCommandSigner(["sign"], ["verify"])
+
+    with pytest.raises(RuntimeError, match="pipes could not be created"):
+        signer.sign(b"manifest")
+
+
+def test_external_signer_cleans_up_reader_and_termination_failures(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FailingPipe:
+        def read(self, size: int) -> bytes:
+            raise OSError("read")
+
+        def write(self, data: bytes) -> int:
+            return len(data)
+
+        def close(self) -> None:
+            raise OSError("close")
+
+    class StubbornProcess:
+        stdin = FailingPipe()
+        stdout = FailingPipe()
+        stderr = FailingPipe()
+        returncode = 1
+        running = True
+
+        def poll(self):
+            return None if self.running else self.returncode
+
+        def terminate(self) -> None:
+            pass
+
+        def kill(self) -> None:
+            self.running = False
+
+        def wait(self, timeout=None):
+            if timeout is not None and self.running:
+                raise signing.subprocess.TimeoutExpired(["sign"], timeout)
+            return self.returncode
+
+    process = StubbornProcess()
+    monkeypatch.setattr(signing.subprocess, "Popen", lambda *args, **kwargs: process)
+    signer = signing.ExternalCommandSigner(["sign"], ["verify"])
+
+    with pytest.raises(RuntimeError, match="could not be read safely"):
+        signer.sign(b"manifest")
+    assert process.running is False
+
+
+def test_structured_external_verifier_fails_closed_on_capture_overflow(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    signer = signing.ExternalCommandSigner(["sign"], ["verify"], structured_verification=True)
+
+    def overflow(*args, **kwargs):
+        raise signing._CommandOutputLimitExceeded
+
+    monkeypatch.setattr(signer, "_run", overflow)
+
+    assert signer.verify(b"manifest", b"signature") == signing.SignatureVerification(False, None)
 
 
 def test_tar_compression_ratio_and_archive_inspection_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

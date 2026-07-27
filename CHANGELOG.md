@@ -4,6 +4,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Security
+
+## [0.3.0] - 2026-07-27
+
+### Added
+
 - Structured signature verification with authenticated signer identities.
 - Architecture Decision Record
   [ADR-014](./docs/decisions/0014-stable-bounded-authenticated-ingestion.md)
@@ -47,6 +57,8 @@
   identities, and mismatched authenticated signer identities.
 - Option injection guards and positional argument separators
   in `scripts/ctt-release-check.sh` and `scripts/check_release.py`.
+- Bound external signer and verifier stdout and stderr during concurrent capture;
+  terminate commands on overflow and fail closed.
 
 ## [0.2.0] - 2026-07-26
 

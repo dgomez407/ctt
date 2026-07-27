@@ -14,6 +14,7 @@ manifest data cannot raise them.
 | --- | ---: |
 | Manifest | 2 MiB |
 | Detached signature | 256 KiB |
+| External-command stdout or stderr | 256 KiB per stream |
 | Archive input | 128 MiB |
 | Expanded archive | 256 MiB |
 | Archive members | 2,000 |
@@ -77,7 +78,11 @@ Structured external verification emits bounded UTF-8 JSON:
 ```
 
 Unknown fields, malformed JSON, invalid identities, excessive output,
-non-zero exit status, and contradictory results fail closed. Private keys and
+non-zero exit status, and contradictory results fail closed. CTT drains stdout
+and stderr concurrently and retains at most 256 KiB from each stream. Crossing
+either ceiling stops capture and terminates the command, so the limit applies
+during execution rather than after unbounded buffering. Signing raises a
+controlled error and verification returns an invalid result. Private keys and
 passphrases remain outside CTT.
 
 `--allow-unverified-signature` deliberately bypasses authenticity checking and
@@ -116,7 +121,7 @@ escalate through the approved CDS procedure.
 | Directory, ZIP, TAR, and TGZ round trips | `tests/test_archive_security.py`, `tests/test_core.py` |
 | Links, traversal, duplicates, encryption, truncation, and cleanup | `tests/test_archive_security.py`, `tests/test_security_invariants.py` |
 | Legacy and identity-bearing signatures | `tests/test_signing.py`, `tests/test_cli_options.py` |
-| Structured verifier JSON and output limits | `tests/test_signing.py`, `tests/test_hardening_limits.py` |
+| Concurrent bounded signer/verifier streams, cleanup, timeouts, and structured JSON | `tests/test_signing.py`, `tests/test_hardening_limits.py` |
 | Policy example and immutable verifier/policy separation | `tests/test_documentation_contracts.py`, `tests/test_policy_and_transformation.py` |
 | CLI options and help | `tests/test_cli_options.py`, `tests/test_cli_documentation.py` |
 | Bootstrap unsigned round trips and fail-closed limits, links, archive metadata, manifests, and signatures | `tests/test_bootstrap.py`, `tests/test_self_package.py` |

@@ -11,14 +11,20 @@ import json
 import os
 import stat
 import subprocess  # nosec B404
+import threading
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 MAX_SIGNATURE_BYTES = 256 * 1024
 MAX_VERIFIER_OUTPUT_BYTES = 256 * 1024
 MAX_SIGNER_IDENTITY_LENGTH = 512
+
+
+class _CommandOutputLimitExceeded(RuntimeError):
+    """Signal that an external command exceeded a bounded output stream."""
 
 
 @dataclass(frozen=True)
@@ -183,28 +189,140 @@ class ExternalCommandSigner:
         if any(argument.partition("=")[0].casefold() in cls._SECRET_FLAGS for argument in command):
             raise ValueError("secret-handling arguments are not accepted by signing hooks")
 
-    def _run(self, command: Sequence[str], data: bytes) -> subprocess.CompletedProcess[bytes]:
-        return subprocess.run(  # nosec B603
-            list(command),
-            input=data,
-            capture_output=True,
-            check=False,
+    def _run(
+        self,
+        command: Sequence[str],
+        data: bytes,
+        *,
+        stdout_limit: int,
+        stderr_limit: int,
+    ) -> subprocess.CompletedProcess[bytes]:
+        """Run a command while retaining no more than each stream's byte limit."""
+        arguments = list(command)
+        process = subprocess.Popen(  # nosec B603
+            arguments,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             shell=False,
-            timeout=self.timeout,
+            bufsize=0,
         )
+        if process.stdin is None or process.stdout is None or process.stderr is None:
+            process.kill()
+            process.wait()
+            raise RuntimeError("external command pipes could not be created")
+        stdin = process.stdin
+        stdout_stream = process.stdout
+        stderr_stream = process.stderr
+
+        cancel = threading.Event()
+        overflow = threading.Event()
+        failures: list[BaseException] = []
+        stdout_chunks: list[bytes] = []
+        stderr_chunks: list[bytes] = []
+
+        def read_bounded(stream: BinaryIO, limit: int, chunks: list[bytes]) -> None:
+            total = 0
+            try:
+                while chunk := stream.read(min(64 * 1024, limit + 1 - total)):
+                    total += len(chunk)
+                    if total > limit:
+                        overflow.set()
+                        cancel.set()
+                        return
+                    chunks.append(chunk)
+            except (OSError, ValueError) as error:
+                failures.append(error)
+                cancel.set()
+
+        def write_input() -> None:
+            try:
+                stdin.write(data)
+                stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
+
+        threads = [
+            threading.Thread(
+                target=read_bounded,
+                args=(stdout_stream, stdout_limit, stdout_chunks),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=read_bounded,
+                args=(stderr_stream, stderr_limit, stderr_chunks),
+                daemon=True,
+            ),
+            threading.Thread(target=write_input, daemon=True),
+        ]
+        for thread in threads:
+            thread.start()
+
+        deadline = time.monotonic() + self.timeout
+        timed_out = False
+        while process.poll() is None:
+            if cancel.wait(timeout=min(0.01, max(0.0, deadline - time.monotonic()))):
+                break
+            if time.monotonic() >= deadline:
+                timed_out = True
+                break
+
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=0.25)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        process.wait()
+
+        for stream in (stdin, stdout_stream, stderr_stream):
+            try:
+                stream.close()
+            except OSError:
+                pass
+        for thread in threads:
+            thread.join(timeout=0.25)
+
+        stdout = b"".join(stdout_chunks)
+        stderr = b"".join(stderr_chunks)
+        if timed_out:
+            raise subprocess.TimeoutExpired(arguments, self.timeout, output=stdout, stderr=stderr)
+        if overflow.is_set():
+            raise _CommandOutputLimitExceeded
+        if failures or any(thread.is_alive() for thread in threads):
+            raise RuntimeError("external command output could not be read safely")
+        return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
     def sign(self, data: bytes) -> bytes:
         """Sign data or raise ``RuntimeError`` when the command fails."""
-        result = self._run(self.sign_command, data)
+        try:
+            result = self._run(
+                self.sign_command,
+                data,
+                stdout_limit=MAX_SIGNATURE_BYTES,
+                stderr_limit=MAX_VERIFIER_OUTPUT_BYTES,
+            )
+        except _CommandOutputLimitExceeded as error:
+            raise RuntimeError("external signing command output exceeded security limit") from error
         if result.returncode != 0:
             raise RuntimeError("external signing command failed")
-        if len(result.stdout) > MAX_SIGNATURE_BYTES:
+        if len(result.stdout) > MAX_SIGNATURE_BYTES or len(result.stderr) > MAX_VERIFIER_OUTPUT_BYTES:
             raise RuntimeError("external signing command output exceeded security limit")
         return result.stdout
 
     def verify(self, data: bytes, signature: bytes) -> bool | SignatureVerification:
         """Return whether the external command validates the signature."""
-        result = self._run(self.verify_command, data + b"\n" + signature)
+        try:
+            result = self._run(
+                self.verify_command,
+                data + b"\n" + signature,
+                stdout_limit=MAX_VERIFIER_OUTPUT_BYTES,
+                stderr_limit=MAX_VERIFIER_OUTPUT_BYTES,
+            )
+        except _CommandOutputLimitExceeded:
+            if self.structured_verification:
+                return SignatureVerification(False, None)
+            return False
         if not self.structured_verification:
             return result.returncode == 0
         if (

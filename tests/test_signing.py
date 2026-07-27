@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -123,41 +124,32 @@ def test_external_signer_requires_positive_timeout(timeout: float):
 def test_external_signer_passes_data_with_shell_disabled_and_timeout(monkeypatch):
     calls = []
 
-    def fake_run(command, **kwargs):
-        calls.append((command, kwargs))
-        return subprocess.CompletedProcess(command, 0, stdout=b"detached-signature")
+    def fake_run(command, data, *, stdout_limit, stderr_limit):
+        calls.append((command, data, stdout_limit, stderr_limit))
+        return subprocess.CompletedProcess(command, 0, stdout=b"detached-signature", stderr=b"")
 
-    monkeypatch.setattr("controlled_text_transfer.signing.subprocess.run", fake_run)
     signer = ExternalCommandSigner(
         ["approved-sign"],
         ["approved-verify"],
         timeout=2.5,
     )
+    monkeypatch.setattr(signer, "_run", fake_run)
 
     assert signer.sign(b"manifest") == b"detached-signature"
     assert signer.verify(b"manifest", b"signature") is True
 
-    assert calls[0] == (
-        ["approved-sign"],
-        {
-            "input": b"manifest",
-            "capture_output": True,
-            "check": False,
-            "shell": False,
-            "timeout": 2.5,
-        },
-    )
-    assert calls[1][0] == ["approved-verify"]
-    assert calls[1][1]["input"] == b"manifest\nsignature"
-    assert calls[1][1]["shell"] is False
+    assert calls[0][0:2] == (signer.sign_command, b"manifest")
+    assert calls[1][0:2] == (signer.verify_command, b"manifest\nsignature")
+    assert calls[0][2:] == (256 * 1024, 256 * 1024)
+    assert calls[1][2:] == (256 * 1024, 256 * 1024)
 
 
 def test_external_signer_fails_closed_on_command_errors(monkeypatch):
-    def fake_run(command, **kwargs):
+    def fake_run(command, data, **kwargs):
         return subprocess.CompletedProcess(command, 7, stdout=b"")
 
-    monkeypatch.setattr("controlled_text_transfer.signing.subprocess.run", fake_run)
     signer = ExternalCommandSigner(["approved-sign"], ["approved-verify"])
+    monkeypatch.setattr(signer, "_run", fake_run)
 
     with pytest.raises(RuntimeError, match="external signing command failed"):
         signer.sign(b"manifest")
@@ -217,7 +209,7 @@ def test_identity_bearing_signature_requires_matching_authenticated_identity(tmp
 
 
 def test_structured_external_verifier_parses_authenticated_identity(monkeypatch):
-    def fake_run(command, **kwargs):
+    def fake_run(command, data, **kwargs):
         return subprocess.CompletedProcess(
             command,
             0,
@@ -225,13 +217,13 @@ def test_structured_external_verifier_parses_authenticated_identity(monkeypatch)
             stderr=b"",
         )
 
-    monkeypatch.setattr("controlled_text_transfer.signing.subprocess.run", fake_run)
     signer = ExternalCommandSigner(
         ["approved-sign"],
         ["approved-verify"],
         structured_verification=True,
         identity="SHA256:approved",
     )
+    monkeypatch.setattr(signer, "_run", fake_run)
 
     assert signer.verify(b"manifest", b"signature") == SignatureVerification(
         True,
@@ -250,17 +242,76 @@ def test_structured_external_verifier_parses_authenticated_identity(monkeypatch)
     ],
 )
 def test_structured_external_verifier_fails_closed(monkeypatch, returncode: int, stdout: bytes):
-    def fake_run(command, **kwargs):
+    def fake_run(command, data, **kwargs):
         return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr=b"")
 
-    monkeypatch.setattr("controlled_text_transfer.signing.subprocess.run", fake_run)
     signer = ExternalCommandSigner(
         ["approved-sign"],
         ["approved-verify"],
         structured_verification=True,
     )
+    monkeypatch.setattr(signer, "_run", fake_run)
 
     assert signer.verify(b"manifest", b"signature") == SignatureVerification(False, None)
+
+
+def _python_command(source: str) -> list[str]:
+    return [sys.executable, "-c", source]
+
+
+def test_external_signer_accepts_output_at_exact_stream_limits(monkeypatch):
+    monkeypatch.setattr("controlled_text_transfer.signing.MAX_SIGNATURE_BYTES", 8)
+    monkeypatch.setattr("controlled_text_transfer.signing.MAX_VERIFIER_OUTPUT_BYTES", 8)
+    command = _python_command(
+        "import sys; sys.stdin.buffer.read(); " "sys.stdout.buffer.write(b'x' * 8); sys.stderr.buffer.write(b'y' * 8)"
+    )
+    signer = ExternalCommandSigner(command, command)
+
+    assert signer.sign(b"manifest") == b"x" * 8
+
+
+@pytest.mark.parametrize("stream", ["stdout", "stderr"])
+def test_external_signer_stops_capture_when_stream_exceeds_limit(monkeypatch, stream: str):
+    monkeypatch.setattr("controlled_text_transfer.signing.MAX_SIGNATURE_BYTES", 8)
+    monkeypatch.setattr("controlled_text_transfer.signing.MAX_VERIFIER_OUTPUT_BYTES", 8)
+    source = (
+        "import sys; sys.stdin.buffer.read(); " f"sys.{stream}.buffer.write(b'x' * 9); " f"sys.{stream}.buffer.flush()"
+    )
+    command = _python_command(source)
+    signer = ExternalCommandSigner(command, command)
+
+    with pytest.raises(RuntimeError, match="output exceeded"):
+        signer.sign(b"manifest")
+    assert signer.verify(b"manifest", b"signature") is False
+
+
+def test_external_signer_drains_stdout_and_stderr_concurrently(monkeypatch):
+    monkeypatch.setattr("controlled_text_transfer.signing.MAX_SIGNATURE_BYTES", 32)
+    monkeypatch.setattr("controlled_text_transfer.signing.MAX_VERIFIER_OUTPUT_BYTES", 32)
+    command = _python_command(
+        "import sys; sys.stdin.buffer.read(); "
+        "sys.stderr.buffer.write(b'e' * 131072); sys.stderr.buffer.flush(); "
+        "sys.stdout.buffer.write(b'o' * 131072); sys.stdout.buffer.flush()"
+    )
+    signer = ExternalCommandSigner(command, command, timeout=2)
+
+    with pytest.raises(RuntimeError, match="output exceeded"):
+        signer.sign(b"manifest")
+
+
+def test_external_signer_timeout_terminates_and_reaps_child():
+    command = _python_command("import time; time.sleep(10)")
+    signer = ExternalCommandSigner(command, command, timeout=0.1)
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        signer.sign(b"manifest")
+
+
+def test_external_signer_ignores_broken_stdin_after_successful_child_exit():
+    command = _python_command("import sys; sys.stdout.buffer.write(b'signature')")
+    signer = ExternalCommandSigner(command, command)
+
+    assert signer.sign(b"x" * (1024 * 1024)) == b"signature"
 
 
 def test_required_signature_fails_for_unsigned_or_tampered_packages(tmp_path: Path):

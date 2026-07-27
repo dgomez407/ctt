@@ -32,7 +32,10 @@ must remain in approved key-management tooling. Do not put them in command
 arguments, environment variables, YAML, manifests, logs, or source files.
 External commands are passed as argument vectors with `shell=False`; do not
 replace this with shell-string execution. Secret-bearing flags are rejected in
-both `--flag value` and `--flag=value` forms.
+both `--flag value` and `--flag=value` forms. CTT drains stdout and stderr
+concurrently, retains no more than 256 KiB from either stream, and terminates a
+command as soon as either stream exceeds that ceiling. Signing reports a
+controlled failure; verification fails closed.
 
 ## File and archive safety
 
