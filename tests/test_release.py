@@ -23,6 +23,7 @@ def _project_metadata() -> dict[str, object]:
 def test_publication_metadata_identifies_license_platform_and_project_urls():
     project = _project_metadata()
 
+    assert project["requires-python"] == ">=3.12.13"
     assert project["license"] == "MIT"
     assert "Operating System :: OS Independent" in project["classifiers"]
     assert project["urls"] == {
@@ -33,6 +34,21 @@ def test_publication_metadata_identifies_license_platform_and_project_urls():
         "Changelog": "https://github.com/dgomez407/ctt/blob/main/CHANGELOG.md",
     }
     assert {"build>=1", "twine>=6"} <= set(project["optional-dependencies"]["dev"])
+
+
+def test_python_security_minimum_is_consistent_across_runtime_contracts():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    release_check = (ROOT / "scripts" / "ctt-release-check.sh").read_text(encoding="utf-8")
+    bootstrap = (ROOT / "src" / "controlled_text_transfer" / "bootstrap.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Python 3.12.13 or newer is required" in readme
+    assert "Python 3.12 support begins at 3.12.13" in security
+    assert "sys.version_info < (3, 12, 13)" in release_check
+    assert "Python 3.12.13 or newer is required" in release_check
+    assert "Python 3.12.13+" in bootstrap
 
 
 def test_release_version_is_consistent_across_package_and_documentation():
@@ -68,6 +84,7 @@ def test_release_workflow_runs_locked_checks_and_validates_distribution():
         "fetch-depth": 0,
         "persist-credentials": False,
     }
+    assert build["steps"][1]["with"] == {"python-version": "3.12.13"}
     assert publish["needs"] == "build"
     assert publish["environment"] == {
         "name": "pypi",

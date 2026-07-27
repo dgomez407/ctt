@@ -84,6 +84,22 @@ passphrases remain outside CTT.
 is a residual risk. Use it only for explicitly approved integrity-only
 inspection; do not treat its success as authorization to restore.
 
+## Zero-dependency bootstrap
+
+The embedded bootstrap requires Python 3.12.13 or newer and restores directory or
+ZIP packages without third-party dependencies. It uses stable bounded reads and the
+same 2 MiB manifest, 128 MiB ZIP input, 256 MiB expansion, 2,000-member, 10 MiB
+member, 100:1 ratio, 16-component path-depth, 180-character path, and 64 KiB
+streaming ceilings listed above. It rejects linked package sources and entries,
+duplicate or encrypted ZIP members, special members, multiple manifests, unsafe
+paths, and size mismatches.
+
+The bootstrap deliberately has no signer integration. A manifest signature or
+detached signature sidecar therefore fails closed with instructions to use an
+installed `ctt restore` workflow backed by a trusted verifier. This preserves
+bootstrap reliability for unsigned installation bundles without representing
+integrity-only restoration as authenticated restoration.
+
 ## Failure response
 
 Treat limit, traversal, checksum, signature, signer-identity, encryption, and
@@ -103,3 +119,4 @@ escalate through the approved CDS procedure.
 | Structured verifier JSON and output limits | `tests/test_signing.py`, `tests/test_hardening_limits.py` |
 | Policy example and immutable verifier/policy separation | `tests/test_documentation_contracts.py`, `tests/test_policy_and_transformation.py` |
 | CLI options and help | `tests/test_cli_options.py`, `tests/test_cli_documentation.py` |
+| Bootstrap unsigned round trips and fail-closed limits, links, archive metadata, manifests, and signatures | `tests/test_bootstrap.py`, `tests/test_self_package.py` |

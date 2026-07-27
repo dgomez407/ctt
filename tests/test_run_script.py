@@ -181,7 +181,7 @@ def test_ci_workflow_uses_locked_canonical_quality_gate_for_supported_pythons():
     test_job = workflow["jobs"]["test"]
     steps = test_job["steps"]
 
-    assert test_job["strategy"]["matrix"]["python-version"] == ["3.12", "3.14"]
+    assert test_job["strategy"]["matrix"]["python-version"] == ["3.12.13", "3.14"]
     assert {"run": "uv sync --frozen --extra dev"} in steps
     assert {"run": "bash scripts/run.sh check"} in steps
     assert all("pip install" not in step.get("run", "") for step in steps)

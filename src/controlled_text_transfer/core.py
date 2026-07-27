@@ -149,7 +149,7 @@ def _read_stable_file(path: Path, maximum: int, label: str) -> bytes:
     """Read a bounded regular file through one descriptor, rejecting path races."""
     try:
         before = path.lstat()
-        if _is_link(path) or not stat.S_ISREG(before.st_mode):
+        if _stat_is_link(before) or not stat.S_ISREG(before.st_mode):
             raise TransferError(f"{label} must be a regular unlinked file")
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(path, flags)
@@ -971,7 +971,10 @@ def _extract_tar(archive: Path, root: Path) -> None:
                     declared_size=member.size,
                     expanded_total=expanded_total,
                 )
-            archive_size = archive.stat().st_size
+            try:
+                archive_size = archive.stat().st_size
+            except OSError as exc:
+                raise TransferError("archive could not be inspected safely") from exc
             if (
                 archive_size == 0
                 and expanded_total
@@ -984,6 +987,11 @@ def _extract_tar(archive: Path, root: Path) -> None:
 
 def _is_link(path: Path) -> bool:
     return path.is_symlink() or path.is_junction()
+
+
+def _stat_is_link(metadata: os.stat_result) -> bool:
+    """Return whether non-following metadata identifies a link or reparse point."""
+    return stat.S_ISLNK(metadata.st_mode) or bool(getattr(metadata, "st_reparse_tag", 0))
 
 
 def _payload_files(payload: Path) -> list[Path]:
@@ -1013,17 +1021,20 @@ def _payload_files(payload: Path) -> list[Path]:
 
 @contextmanager
 def _package_directory(package: Path) -> Iterator[Path]:
-    if _is_link(package):
-        raise TransferError(f"linked package path is not allowed: {package}")
-    if package.is_dir():
-        yield package
-        return
-    if not package.is_file():
-        raise FileNotFoundError(package)
     try:
-        archive_size = package.stat().st_size
+        package_metadata = package.lstat()
+    except FileNotFoundError:
+        raise
     except OSError as exc:
         raise TransferError("archive could not be inspected safely") from exc
+    if _stat_is_link(package_metadata):
+        raise TransferError(f"linked package path is not allowed: {package}")
+    if stat.S_ISDIR(package_metadata.st_mode):
+        yield package
+        return
+    if not stat.S_ISREG(package_metadata.st_mode):
+        raise FileNotFoundError(package)
+    archive_size = package_metadata.st_size
     if archive_size > MAX_ARCHIVE_INPUT_BYTES:
         raise TransferError("archive input exceeds security limit")
     with tempfile.TemporaryDirectory(prefix="ctt-archive-") as temporary:

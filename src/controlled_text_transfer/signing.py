@@ -46,7 +46,11 @@ class ManifestSigner(Protocol):
 def _read_stable(path: Path, maximum: int, label: str) -> bytes:
     """Read one regular file through a stable descriptor with a hard size bound."""
     before = path.lstat()
-    if path.is_symlink() or path.is_junction() or not stat.S_ISREG(before.st_mode):
+    if (
+        stat.S_ISLNK(before.st_mode)
+        or bool(getattr(before, "st_reparse_tag", 0))
+        or not stat.S_ISREG(before.st_mode)
+    ):
         raise ValueError(f"{label} must be a regular unlinked file")
     flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
     descriptor = os.open(path, flags)

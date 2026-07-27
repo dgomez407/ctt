@@ -44,7 +44,7 @@ When transferring CTT to an isolated destination network that does not yet have 
    Transfer `dist/ctt-bootstrap.zip` across the CDS boundary. All files end in `.txt` and comply with text policy rules.
 
 3. **Bootstrap Restore on Destination Network**:
-   On the destination host (which has Python 3.12+ installed but no CTT package):
+   On the destination host (which has Python 3.12.13+ installed but no CTT package):
    ```text
    unzip ctt-bootstrap.zip -d /tmp/ctt-bootstrap
    python /tmp/ctt-bootstrap/bootstrap.py.txt /tmp/ctt-bootstrap /opt/ctt

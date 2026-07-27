@@ -16,11 +16,22 @@
 
 - Security-sensitive reads now use stable descriptors, and archive ingestion
   streams observed bytes under immutable conservative CDS ceilings.
+- Hardened the zero-dependency bootstrap with stable bounded directory and ZIP
+  ingestion while preserving unsigned self-package restoration compatibility.
+
+- Raised the minimum supported runtime to Python 3.12.13 and pinned the
+  minimum-runtime CI and release jobs to that security patch.
 
 ### Fixed
+- Made stable file and archive inspection independent of Python-version-specific
+  `pathlib` query call ordering.
+
 
 ### Security
 
+- Bootstrap restoration now rejects linked package entries, duplicate or encrypted
+  ZIP members, excessive expansion or compression, multiple manifests, and signed
+  packages it cannot authenticate.
 - Bound manifests, signatures, archive input and expansion, members, individual
   files, compression ratios, and paths independently of transferred policy.
 - Reject encrypted ZIP members, dishonest observed sizes, unstable file
@@ -32,27 +43,44 @@
 
 ### Added
 
-- `self-package` subcommand and core API to bundle CTT's own codebase into a `.txt`-only cross-domain transfer package.
-- Zero-dependency Python bootstrap restoration script (`src/controlled_text_transfer/bootstrap.py`) embedded in self-packages for initial deployment on unequipped destination hosts.
+- `self-package` subcommand and core API to bundle CTT's own codebase into a
+  `.txt`-only cross-domain transfer package.
+- Zero-dependency Python bootstrap restoration script
+  (`src/controlled_text_transfer/bootstrap.py`) embedded in self-packages for
+  initial deployment on unequipped destination hosts.
 - `bootstrap` subcommand in `scripts/run.sh` to generate self-bootstrapping transfer archives.
-- Live dynamic Shields.io metrics badges (PyPI version, PyPI license, Python versions, CI build status, Black, Ruff, mypy strict, and Bandit security scan) on `README.md`.
-- PyPI package URLs in `pyproject.toml` metadata and direct installation runbooks in `README.md`, `README-quickstart.md`, and `docs/operations.md`.
-- `release` and `unrelease` subcommands in `scripts/run.sh` to automate release preflight alignment, metadata validation, quality gates, git tagging, and local rollback operations.
+- Live dynamic Shields.io metrics badges (PyPI version, PyPI license, Python
+  versions, CI build status, Black, Ruff, mypy strict, and Bandit security scan)
+  on `README.md`.
+- PyPI package URLs in `pyproject.toml` metadata and direct installation runbooks
+  in `README.md`, `README-quickstart.md`, and `docs/operations.md`.
+- `release` and `unrelease` subcommands in `scripts/run.sh` to automate release
+  preflight alignment, metadata validation, quality gates, git tagging, and local
+  rollback operations.
 - Offline release snapshot validation helper (`scripts/ctt-release-check.sh`).
-- `Check Usage:` section in `scripts/run.sh help` and `scripts/README.md` recommending pre-PR quality checks.
+- `Check Usage:` section in `scripts/run.sh help` and `scripts/README.md`
+  recommending pre-PR quality checks.
 - Default ignore pattern fallback (`DEFAULT_IGNORE_PATTERNS`) when `.cttignore` is absent.
 - Comprehensive subcommand, flag, and utility reference guide in `scripts/README.md`.
-- Architecture Decision Record [ADR-013](docs/decisions/0013-release-alignment-and-rollback-operations.md) for release alignment and unrelease operations.
+- Architecture Decision Record
+  [ADR-013](docs/decisions/0013-release-alignment-and-rollback-operations.md)
+  for release alignment and unrelease operations.
 
 ### Changed
 
-- Replaced `tar.gz` package format with `tgz` format across core engine, CLI options, policy definitions, and documentation.
-- Improved archive suffix deduplication (`_resolve_package_destination`) and internal root directory formatting (`_clean_archive_root_name`) to prevent double extensions and suffix retention during archive extraction.
-- Restructured `README.md` to highlight CTT's primary security purpose, core 4-step workflow, path roles, policy defaults, and expressive CLI command examples while separating maintainer scripts.
+- Replaced `tar.gz` package format with `tgz` format across core engine, CLI
+  options, policy definitions, and documentation.
+- Improved archive suffix deduplication (`_resolve_package_destination`) and
+  internal root directory formatting (`_clean_archive_root_name`) to prevent
+  double extensions and suffix retention during archive extraction.
+- Restructured `README.md` to highlight CTT's primary security purpose, core
+  4-step workflow, path roles, policy defaults, and expressive CLI command
+  examples while separating maintainer scripts.
 
 ### Fixed
 
-- Source scanning preflight resilience handling symlinks (`symlink_not_allowed`) and root-escaping paths (`path_escapes_root`) cleanly during preflight scanning.
+- Source scanning preflight resilience handling symlinks (`symlink_not_allowed`)
+  and root-escaping paths (`path_escapes_root`) cleanly during preflight scanning.
 - `scripts/run.sh report` and `scripts/report.py` virtual environment tool executable resolution.
 - `scripts/run.sh release` version synchronization for `src/controlled_text_transfer/__init__.py`.
 - `scripts/check_release.py` handling of empty markdown subheadings under `## [Unreleased]`.

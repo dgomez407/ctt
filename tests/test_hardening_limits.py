@@ -235,8 +235,9 @@ def test_tar_compression_ratio_and_archive_inspection_fail_closed(
 
     monkeypatch.setattr(Path, "stat", fail_archive_stat)
     with pytest.raises(TransferError, match="archive could not be inspected safely"):
-        with core._package_directory(archive):
-            pass
+        extraction_root = tmp_path / "tar-extraction"
+        extraction_root.mkdir()
+        core._extract_tar(archive, extraction_root)
 
 
 class _IdentitySigner:
@@ -302,3 +303,30 @@ def test_signature_read_and_invalid_structured_result_fail_closed(
     )
     with pytest.raises(TransferError, match="signature verification failed"):
         verify(package, signer=_IdentitySigner())
+
+
+def test_package_directory_converts_lstat_errors_and_rejects_special_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    archive = tmp_path / "archive.tar"
+    archive.write_bytes(b"archive")
+    original_lstat = Path.lstat
+
+    def fail_archive_lstat(self, *args, **kwargs):
+        if self == archive:
+            raise OSError("unreadable")
+        return original_lstat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "lstat", fail_archive_lstat)
+    with pytest.raises(TransferError, match="archive could not be inspected safely"):
+        with core._package_directory(archive):
+            pass
+
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _self: SimpleNamespace(st_mode=0, st_size=0, st_reparse_tag=0),
+    )
+    with pytest.raises(FileNotFoundError):
+        with core._package_directory(archive):
+            pass

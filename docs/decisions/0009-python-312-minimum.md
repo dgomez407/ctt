@@ -4,7 +4,7 @@
 
 ## Status
 
-Accepted
+Accepted; amended by ADR-015
 
 ## Date
 

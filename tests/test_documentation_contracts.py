@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from controlled_text_transfer import core, signing
+from controlled_text_transfer import bootstrap, core, signing
 from controlled_text_transfer.core import Policy
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +26,16 @@ def test_documented_security_ceilings_match_runtime_constants():
         assert f"| {label} | {documented} |" in contract
 
     assert core.MAX_MANIFEST_BYTES == 2 * 1024 * 1024
+    assert bootstrap.MAX_MANIFEST_BYTES == core.MAX_MANIFEST_BYTES
+    assert bootstrap.MAX_ZIP_INPUT_BYTES == core.MAX_ARCHIVE_INPUT_BYTES
+    assert bootstrap.MAX_ZIP_EXPANDED_BYTES == core.MAX_ARCHIVE_BYTES
+    assert bootstrap.MAX_ZIP_MEMBERS == core.MAX_ARCHIVE_MEMBERS
+    assert bootstrap.MAX_ZIP_MEMBER_BYTES == core.MAX_ARCHIVE_MEMBER_BYTES
+    assert bootstrap.MAX_COMPRESSION_RATIO == core.MAX_COMPRESSION_RATIO
+    assert bootstrap.MAX_PATH_DEPTH == core.MAX_SECURITY_PATH_DEPTH
+    assert bootstrap.MAX_PATH_LENGTH == core.MAX_SECURITY_PATH_LENGTH
+    assert bootstrap.STREAM_BUFFER_BYTES == core.STREAM_BUFFER_BYTES
+
     assert signing.MAX_SIGNATURE_BYTES == 256 * 1024
     assert core.MAX_ARCHIVE_INPUT_BYTES == 128 * 1024 * 1024
     assert core.MAX_ARCHIVE_BYTES == 256 * 1024 * 1024

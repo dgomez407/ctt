@@ -10,7 +10,8 @@
 
 `ctt` validates source files against explicit compliance policies, packages allowed files into a `.txt`-only transfer format (preserving full original paths and metadata in a signed-ready JSON manifest), and restores exact byte-identical originals at the destination.
 
-Python 3.12 or newer is required.
+Python 3.12.13 or newer is required. Earlier 3.12 patch releases omit upstream
+security fixes included in 3.12.13.
 
 ---
 
@@ -147,6 +148,13 @@ Package the `ctt` application itself into a standalone `.txt`-only transfer bund
 ```bash
 ctt self-package ./dist/ctt-bootstrap.zip --format zip
 ```
+
+The embedded bootstrap requires Python 3.12.13 or newer. It bounds manifests, ZIP
+input, expanded content, member count and size, compression ratios, and paths; it
+rejects links, duplicate or encrypted members, and multiple manifests. Because the
+zero-dependency bootstrap has no trusted signer integration, it rejects signed
+packages. Use the installed `ctt restore` command to authenticate and restore them.
+
 
 For complete CLI flag documentation, see the [CLI option reference](docs/cli.md).
 

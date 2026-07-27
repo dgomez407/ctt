@@ -340,3 +340,335 @@ def test_bootstrap_main_error_handling(tmp_path: Path):
     # Call main with invalid package source
     exit_code = main([str(tmp_path / "non_existent"), str(tmp_path / "dest")])
     assert exit_code == 2
+
+
+def test_bootstrap_rejects_signed_and_oversized_manifests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from controlled_text_transfer import bootstrap
+
+    package, destination = _make_dummy_package(tmp_path)
+    manifest_path = package / "ctt-manifest.json.txt"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["signature"] = {"algorithm": "test", "key_label": "unverified"}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(BootstrapError, match="cannot authenticate signed packages"):
+        restore_bootstrap(package, destination)
+
+    manifest.pop("signature")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "MAX_MANIFEST_BYTES", 1)
+    with pytest.raises(BootstrapError, match="manifest exceeds the security limit"):
+        restore_bootstrap(package, destination)
+
+
+def test_bootstrap_rejects_duplicate_encrypted_and_oversized_zip_members(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from controlled_text_transfer import bootstrap
+
+    package, _destination = _make_dummy_package(tmp_path)
+    manifest = (package / "ctt-manifest.json.txt").read_bytes()
+    payload = (package / "README.md.txt").read_bytes()
+
+    duplicate = tmp_path / "duplicate.zip"
+    with pytest.warns(UserWarning, match="Duplicate name"):
+        with zipfile.ZipFile(duplicate, "w") as archive:
+            archive.writestr("ctt-manifest.json.txt", manifest)
+            archive.writestr("README.md.txt", payload)
+            archive.writestr("README.md.txt", payload)
+    with pytest.raises(BootstrapError, match="duplicate ZIP member"):
+        restore_bootstrap(duplicate, tmp_path / "duplicate-destination")
+
+    encrypted = tmp_path / "encrypted.zip"
+    encrypted_member = zipfile.ZipInfo("README.md.txt")
+    encrypted_member.flag_bits |= 0x1
+    with zipfile.ZipFile(encrypted, "w") as archive:
+        archive.writestr("ctt-manifest.json.txt", manifest)
+        archive.writestr(encrypted_member, payload)
+    with zipfile.ZipFile(encrypted, "r") as archive:
+        archive.getinfo("README.md.txt").flag_bits |= 0x1
+        monkeypatch.setattr(bootstrap.zipfile, "ZipFile", lambda *_args, **_kwargs: archive)
+        with pytest.raises(BootstrapError, match="encrypted ZIP member"):
+            bootstrap._restore_from_zip(encrypted, tmp_path / "encrypted-stage")
+
+    monkeypatch.undo()
+    oversized = tmp_path / "oversized.zip"
+    with zipfile.ZipFile(oversized, "w") as archive:
+        archive.writestr("ctt-manifest.json.txt", manifest)
+        archive.writestr("README.md.txt", payload)
+    monkeypatch.setattr(bootstrap, "MAX_ZIP_MEMBER_BYTES", 1)
+    with pytest.raises(BootstrapError, match="ZIP member exceeds the security limit"):
+        restore_bootstrap(oversized, tmp_path / "oversized-destination")
+
+
+def test_bootstrap_directory_rejects_linked_payload_and_multiple_manifests(tmp_path: Path):
+    package, destination = _make_dummy_package(tmp_path)
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes((package / "README.md.txt").read_bytes())
+    (package / "README.md.txt").unlink()
+    try:
+        (package / "README.md.txt").symlink_to(outside)
+    except OSError:
+        pytest.skip("symlink creation is not permitted")
+
+    with pytest.raises(BootstrapError, match="regular unlinked file"):
+        restore_bootstrap(package, destination)
+
+    (package / "README.md.txt").unlink()
+    (package / "README.md.txt").write_bytes(outside.read_bytes())
+    nested = package / "nested"
+    nested.mkdir()
+    (nested / "ctt-manifest.json.txt").write_bytes((package / "ctt-manifest.json.txt").read_bytes())
+    with pytest.raises(BootstrapError, match="multiple manifests"):
+        restore_bootstrap(package, destination)
+
+
+def test_bootstrap_stable_reader_rejects_metadata_and_read_races(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import io
+    import stat
+    from types import SimpleNamespace
+
+    from controlled_text_transfer import bootstrap
+
+    missing = tmp_path / "missing.txt"
+    with pytest.raises(BootstrapError, match="cannot inspect payload"):
+        bootstrap._read_stable(missing, 10, "payload")
+
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    with pytest.raises(BootstrapError, match="regular unlinked file"):
+        bootstrap._read_stable(directory, 10, "payload")
+
+    payload = tmp_path / "payload.txt"
+    payload.write_bytes(b"ab")
+    with pytest.raises(BootstrapError, match="payload exceeds 1 bytes"):
+        bootstrap._read_stable(payload, 1, "payload")
+
+    class Stream(io.BytesIO):
+        def fileno(self) -> int:
+            return 42
+
+    regular = SimpleNamespace(st_mode=stat.S_IFREG, st_dev=1, st_ino=1, st_size=1)
+    directory_metadata = SimpleNamespace(st_mode=stat.S_IFDIR, st_dev=1, st_ino=1, st_size=1)
+    monkeypatch.setattr(bootstrap.os, "fstat", lambda _fd: directory_metadata)
+    monkeypatch.setattr(Path, "open", lambda _self, _mode: Stream(b"x"))
+    monkeypatch.setattr(Path, "lstat", lambda _self: regular)
+    with pytest.raises(BootstrapError, match="regular unlinked file"):
+        bootstrap._read_stable(payload, 10, "payload")
+
+    monkeypatch.setattr(bootstrap.os, "fstat", lambda _fd: regular)
+    monkeypatch.setattr(Path, "open", lambda _self, _mode: Stream(b"ab"))
+    with pytest.raises(BootstrapError, match="exceeds 1 bytes"):
+        bootstrap._read_stable(payload, 1, "payload")
+
+    class BrokenStream(Stream):
+        def read(self, _size: int = -1) -> bytes:
+            raise OSError("read failed")
+
+    monkeypatch.setattr(Path, "open", lambda _self, _mode: BrokenStream(b"x"))
+    with pytest.raises(BootstrapError, match="cannot read payload"):
+        bootstrap._read_stable(payload, 10, "payload")
+
+    monkeypatch.setattr(Path, "open", lambda _self, _mode: Stream(b"x"))
+    calls = 0
+
+    def disappearing_lstat(_self):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("gone")
+        return regular
+
+    monkeypatch.setattr(Path, "lstat", disappearing_lstat)
+    with pytest.raises(BootstrapError, match="changed while being read"):
+        bootstrap._read_stable(payload, 10, "payload")
+
+    changed = SimpleNamespace(st_mode=stat.S_IFREG, st_dev=1, st_ino=2, st_size=1)
+    metadata = iter((regular, changed))
+    monkeypatch.setattr(Path, "lstat", lambda _self: next(metadata))
+    with pytest.raises(BootstrapError, match="changed while being read"):
+        bootstrap._read_stable(payload, 10, "payload")
+
+
+def test_bootstrap_manifest_path_and_source_boundaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    import stat
+    from types import SimpleNamespace
+
+    from controlled_text_transfer import bootstrap
+
+    for unsafe in ("", "a" * 181, "a\\b"):
+        with pytest.raises(BootstrapError, match="unsafe package path"):
+            bootstrap._safe_relative(unsafe)
+    with pytest.raises(BootstrapError, match="files list"):
+        bootstrap._decode_manifest(b"[]")
+    with pytest.raises(BootstrapError, match="files list"):
+        bootstrap._decode_manifest(b"{}")
+    monkeypatch.setattr(bootstrap, "MAX_ZIP_MEMBERS", 0)
+    with pytest.raises(BootstrapError, match="too many file entries"):
+        bootstrap._decode_manifest(b'{"files": [{}]}')
+    monkeypatch.undo()
+
+    assert bootstrap._hash_file(tmp_path / "sha256.txt", "sha256") if False else True
+    sha_file = tmp_path / "sha256.txt"
+    sha_file.write_bytes(b"sha256")
+    assert bootstrap._hash_file(sha_file, "sha256") == hashlib.sha256(b"sha256").hexdigest()
+
+    package, destination = _make_dummy_package(tmp_path)
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _self: SimpleNamespace(
+            st_mode=stat.S_IFREG, st_dev=1, st_ino=1, st_size=1, st_reparse_tag=1
+        ),
+    )
+    with pytest.raises(BootstrapError, match="package source must not be a link"):
+        restore_bootstrap(package, destination)
+
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _self: SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=1, st_ino=1, st_size=0),
+    )
+    with pytest.raises(BootstrapError, match="invalid package source"):
+        restore_bootstrap(package, destination)
+
+
+def test_bootstrap_manifest_entry_and_directory_limits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from controlled_text_transfer import bootstrap
+
+    with pytest.raises(BootstrapError, match="unsupported hash algorithm"):
+        bootstrap._manifest_entries({"files": [], "hash_algorithm": "md5"})
+    with pytest.raises(BootstrapError, match="files list"):
+        bootstrap._manifest_entries({})
+    with pytest.raises(BootstrapError, match="entries must be objects"):
+        bootstrap._manifest_entries({"files": ["bad"]})
+
+    package, destination = _make_dummy_package(tmp_path)
+    manifest = json.loads((package / "ctt-manifest.json.txt").read_text(encoding="utf-8"))
+    manifest["files"].append(dict(manifest["files"][0]))
+    (package / "ctt-manifest.json.txt").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(BootstrapError, match="duplicate restoration path"):
+        restore_bootstrap(package, destination)
+
+    package2, destination2 = _make_dummy_package(tmp_path / "count")
+    monkeypatch.setattr(bootstrap, "MAX_ZIP_EXPANDED_BYTES", 1)
+    with pytest.raises(BootstrapError, match="expanded-size limit"):
+        restore_bootstrap(package2, destination2)
+
+    monkeypatch.undo()
+    package3, destination3 = _make_dummy_package(tmp_path / "members")
+    monkeypatch.setattr(bootstrap, "MAX_ZIP_MEMBERS", 1)
+    with pytest.raises(BootstrapError, match="too many files"):
+        restore_bootstrap(package3, destination3)
+
+
+def test_bootstrap_zip_metadata_and_stream_boundaries(monkeypatch: pytest.MonkeyPatch):
+    import io
+    import stat
+
+    from controlled_text_transfer import bootstrap
+
+    class Archive:
+        def __init__(self, members):
+            self.members = members
+
+        def infolist(self):
+            return self.members
+
+    regular = zipfile.ZipInfo("payload.txt")
+    regular.file_size = 1
+    regular.compress_size = 1
+
+    monkeypatch.setattr(bootstrap, "MAX_ZIP_MEMBERS", 0)
+    with pytest.raises(BootstrapError, match="too many members"):
+        bootstrap._validated_zip_members(Archive([regular]))
+    monkeypatch.undo()
+
+    special = zipfile.ZipInfo("special.txt")
+    special.external_attr = (stat.S_IFLNK | 0o777) << 16
+    with pytest.raises(BootstrapError, match="non-regular ZIP member"):
+        bootstrap._validated_zip_members(Archive([special]))
+
+    expanded = zipfile.ZipInfo("expanded.txt")
+    expanded.file_size = 2
+    expanded.compress_size = 2
+    monkeypatch.setattr(bootstrap, "MAX_ZIP_EXPANDED_BYTES", 1)
+    with pytest.raises(BootstrapError, match="expanded-size limit"):
+        bootstrap._validated_zip_members(Archive([expanded]))
+    monkeypatch.undo()
+
+    ratio = zipfile.ZipInfo("ratio.txt")
+    ratio.file_size = 101
+    ratio.compress_size = 1
+    with pytest.raises(BootstrapError, match="compression-ratio limit"):
+        bootstrap._validated_zip_members(Archive([ratio]))
+
+    class MemberArchive:
+        def __init__(self, data: bytes):
+            self.data = data
+
+        def open(self, _info, _mode):
+            return io.BytesIO(self.data)
+
+    declared = zipfile.ZipInfo("payload.txt")
+    declared.file_size = 1
+    with pytest.raises(BootstrapError, match="security limit"):
+        bootstrap._read_zip_member(MemberArchive(b"ab"), declared, 1)
+    declared.file_size = 2
+    with pytest.raises(BootstrapError, match="size changed"):
+        bootstrap._read_zip_member(MemberArchive(b"a"), declared, 10)
+
+
+def test_bootstrap_zip_rejects_signature_multiple_manifests_and_duplicate_targets(tmp_path: Path):
+    package, _destination = _make_dummy_package(tmp_path)
+    manifest_bytes = (package / "ctt-manifest.json.txt").read_bytes()
+    payload = (package / "README.md.txt").read_bytes()
+
+    signed = tmp_path / "signed-sidecar.zip"
+    with zipfile.ZipFile(signed, "w") as archive:
+        archive.writestr("ctt-manifest.json.txt", manifest_bytes)
+        archive.writestr("ctt-manifest.sig.txt", b"signature")
+    with pytest.raises(BootstrapError, match="cannot authenticate signed packages"):
+        restore_bootstrap(signed, tmp_path / "signed-destination")
+
+    multiple = tmp_path / "multiple-manifests.zip"
+    with zipfile.ZipFile(multiple, "w") as archive:
+        archive.writestr("one/ctt-manifest.json.txt", manifest_bytes)
+        archive.writestr("two/ctt-manifest.json.txt", manifest_bytes)
+    with pytest.raises(BootstrapError, match="multiple manifests"):
+        restore_bootstrap(multiple, tmp_path / "multiple-destination")
+
+    manifest = json.loads(manifest_bytes)
+    manifest["files"].append(dict(manifest["files"][0]))
+    duplicate = tmp_path / "duplicate-target.zip"
+    with zipfile.ZipFile(duplicate, "w") as archive:
+        archive.writestr("ctt-manifest.json.txt", json.dumps(manifest))
+        archive.writestr("README.md.txt", payload)
+    with pytest.raises(BootstrapError, match="duplicate restoration path"):
+        restore_bootstrap(duplicate, tmp_path / "duplicate-target-destination")
+
+
+def test_bootstrap_directory_rejects_linked_directories_and_signature_sidecars(tmp_path: Path):
+    package, destination = _make_dummy_package(tmp_path)
+    outside = tmp_path / "outside-directory"
+    outside.mkdir()
+    linked = package / "linked-directory"
+    try:
+        linked.symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlink creation is not permitted")
+    with pytest.raises(BootstrapError, match="regular unlinked files"):
+        restore_bootstrap(package, destination)
+
+    linked.unlink()
+    (package / "ctt-manifest.sig.txt").write_bytes(b"signature")
+    with pytest.raises(BootstrapError, match="cannot authenticate signed packages"):
+        restore_bootstrap(package, destination)

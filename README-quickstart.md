@@ -6,7 +6,8 @@ Install official packages directly from [PyPI (`controlled-text-transfer`)](http
 pip install controlled-text-transfer
 ```
 
-For development, `uv` creates and manages the Python 3.12-or-newer environment automatically from the repository root:
+For development, `uv` creates and manages the Python 3.12.13-or-newer environment
+automatically from the repository root:
 
 ## Show the CLI
 

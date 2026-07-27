@@ -107,6 +107,20 @@ and prospective-merge validation. PyPI publication remains isolated in its own
 job with environment-scoped OIDC permission, and a release tag is rejected
 unless its checked-out commit belongs to `origin/main`.
 
+The zero-dependency bootstrap applies bounded, stable reads to package directories
+and ZIP archives. It rejects links, duplicate or encrypted ZIP members, excessive
+expansion or compression, unsafe paths, multiple manifests, and signed packages it
+cannot authenticate. Signed packages must be restored with an installed, trusted CTT
+verifier.
+
+
+Python 3.12 support begins at 3.12.13, the current upstream security release.
+CI pins that minimum patch explicitly and also tests Python 3.14. Operators
+must update when a later security patch is released; Python 3.12 support will
+be reassessed by October 2027 and removed no later than its October 2028
+upstream end of life.
+
+
 ## Reporting
 
 Do not include secrets or sensitive file contents in bug reports. Report code
