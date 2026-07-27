@@ -59,8 +59,9 @@ def check_release(tag: str) -> str:
     if len(release_heading.findall(changelog)) != 1:
         raise ReleaseCheckError(f"changelog must contain one dated {version} release")
 
-    unreleased = changelog.partition("## [Unreleased]")[2].partition("\n## ")[0]
-    if unreleased.strip():
+    unreleased_content = changelog.partition("## [Unreleased]")[2].partition("\n## ")[0]
+    unreleased_items = re.sub(r"(?m)^###\s+.*$", "", unreleased_content).strip()
+    if unreleased_items:
         raise ReleaseCheckError("changelog has unreleased changes; assign them to the release")
 
     return version

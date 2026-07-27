@@ -153,9 +153,9 @@ if not re.search(pattern, changelog, re.MULTILINE):
         printf '==> Bumping version in pyproject.toml to %s...\n' "$version"
         uv version "$version"
 
-        printf '==> Updating README.md header for %s...\n' "$version"
+        printf '==> Updating README.md header and __init__.py for %s...\n' "$version"
         "$python_cmd" -c '
-import sys
+import re, sys
 from pathlib import Path
 version = sys.argv[1]
 readme_path = Path("README.md")
@@ -163,6 +163,11 @@ lines = readme_path.read_text(encoding="utf-8").splitlines()
 if lines:
     lines[0] = f"# Controlled Text Transfer {version}"
 readme_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+init_path = Path("src/controlled_text_transfer/__init__.py")
+init_content = init_path.read_text(encoding="utf-8")
+new_content = re.sub(r"__version__\s*=\s*\".*?\"", f"__version__ = \"{version}\"", init_content)
+init_path.write_text(new_content, encoding="utf-8")
 ' "$version"
 
         printf '==> Running check_release.py %s...\n' "$tag"
