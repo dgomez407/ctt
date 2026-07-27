@@ -23,6 +23,7 @@ def _project_metadata() -> dict[str, object]:
 def test_publication_metadata_identifies_license_platform_and_project_urls():
     project = _project_metadata()
 
+    assert project["requires-python"] == ">=3.12.13"
     assert project["license"] == "MIT"
     assert "Operating System :: OS Independent" in project["classifiers"]
     assert project["urls"] == {
@@ -33,6 +34,19 @@ def test_publication_metadata_identifies_license_platform_and_project_urls():
         "Changelog": "https://github.com/dgomez407/ctt/blob/main/CHANGELOG.md",
     }
     assert {"build>=1", "twine>=6"} <= set(project["optional-dependencies"]["dev"])
+
+
+def test_python_security_minimum_is_consistent_across_runtime_contracts():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    release_check = (ROOT / "scripts" / "ctt-release-check.sh").read_text(encoding="utf-8")
+    bootstrap = (ROOT / "src" / "controlled_text_transfer" / "bootstrap.py").read_text(encoding="utf-8")
+
+    assert "Python 3.12.13 or newer is required" in readme
+    assert "Python 3.12 support begins at 3.12.13" in security
+    assert "sys.version_info < (3, 12, 13)" in release_check
+    assert "Python 3.12.13 or newer is required" in release_check
+    assert "Python 3.12.13+" in bootstrap
 
 
 def test_release_version_is_consistent_across_package_and_documentation():
@@ -59,15 +73,14 @@ def test_release_workflow_runs_locked_checks_and_validates_distribution():
     assert build["permissions"] == {"contents": "read"}
     assert any(step.get("run") == "uv sync --frozen --extra dev" for step in build["steps"])
     assert "bash scripts/run.sh check" in workflow
-    assert (
-        'uv run python scripts/check_release.py "$GITHUB_REF_NAME" ' "--trusted-ref origin/main"
-    ) in workflow
+    assert ('uv run python scripts/check_release.py "$GITHUB_REF_NAME" ' "--trusted-ref origin/main") in workflow
     assert "uv run python -m build" in workflow
     assert "uv run python -m twine check dist/*" in workflow
     assert build["steps"][0]["with"] == {
         "fetch-depth": 0,
         "persist-credentials": False,
     }
+    assert build["steps"][1]["with"] == {"python-version": "3.12.13"}
     assert publish["needs"] == "build"
     assert publish["environment"] == {
         "name": "pypi",
@@ -85,10 +98,7 @@ def test_release_workflow_pins_every_action_to_a_full_sha():
     assert "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0" in workflow
     assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1" in workflow
     assert "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1" in workflow
-    assert (
-        "pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 "
-        "# v1.14.1" in workflow
-    )
+    assert "pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 " "# v1.14.1" in workflow
     assert workflow.count("uses:") == workflow.count("# v")
 
 
@@ -96,14 +106,12 @@ def test_automation_documentation_matches_workflow_contracts():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     workflow_docs = (ROOT / ".github" / "workflows" / "README.md").read_text(encoding="utf-8")
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
-    decision = (ROOT / "docs" / "decisions" / "0012-harden-github-automation.md").read_text(
-        encoding="utf-8"
-    )
+    decision = (ROOT / "docs" / "decisions" / "0012-harden-github-automation.md").read_text(encoding="utf-8")
 
     assert not (ROOT / ".github" / "README.md").exists()
     assert "## GitHub automation" in readme
-    assert "[Workflow definitions](.github/workflows/README.md)" in readme
-    assert "[`dependabot.yml`](.github/dependabot.yml)" in readme
+    assert "[Workflow definitions](./.github/workflows/README.md)" in readme
+    assert "[`dependabot.yml`](./.github/dependabot.yml)" in readme
     assert "repository `ctt`" in readme
     assert "commit belongs to `origin/main`" in readme
     for documentation in (workflow_docs, security, decision):
@@ -113,17 +121,14 @@ def test_automation_documentation_matches_workflow_contracts():
         assert "uv sync --frozen --extra dev" in normalized
     assert "full commit SHA" in workflow_docs
     assert "least-privilege permissions" in security
-    assert "branch run cannot cancel its corresponding pull-request run" in " ".join(
-        decision.split()
-    )
+    assert "branch run cannot cancel its corresponding pull-request run" in " ".join(decision.split())
 
 
 def test_source_distribution_includes_publication_documentation_and_examples():
     manifest = (ROOT / "MANIFEST.in").read_text(encoding="utf-8")
 
     assert (
-        "include CHANGELOG.md README-quickstart.md SECURITY.md ctt.spec "
-        "ctt.yaml.example .cttignore.example"
+        "include CHANGELOG.md README-quickstart.md SECURITY.md ctt.spec " "ctt.yaml.example .cttignore.example"
     ) in manifest
     assert "recursive-include docs *.md" in manifest
     assert "recursive-include scripts *.md *.py *.sh" in manifest

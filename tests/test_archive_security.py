@@ -14,9 +14,7 @@ from controlled_text_transfer.core import Policy, TransferError, prepare, restor
     ("package_format", "suffix"),
     [("zip", ".zip"), ("tar", ".tar"), ("tgz", ".tgz")],
 )
-def test_verify_and_restore_accept_archives_directly(
-    tmp_path: Path, package_format: str, suffix: str
-):
+def test_verify_and_restore_accept_archives_directly(tmp_path: Path, package_format: str, suffix: str):
     source = tmp_path / "source"
     source.mkdir()
     (source / "safe.py").write_text("safe\n", encoding="utf-8")
@@ -161,9 +159,7 @@ def test_verify_rejects_tar_with_multiple_roots(tmp_path: Path):
         verify(archive)
 
 
-def test_verify_rejects_archive_expansion_over_limit(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_verify_rejects_archive_expansion_over_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     archive = tmp_path / "large.tar"
     with tarfile.open(archive, "w") as output:
         data = b"12345"
@@ -187,10 +183,54 @@ def test_verify_rejects_zip_expansion_over_limit(tmp_path: Path, monkeypatch: py
         verify(archive)
 
 
+def test_verify_rejects_archive_input_over_security_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    archive = tmp_path / "large.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("payload/file.txt", b"x")
+    monkeypatch.setattr(core, "MAX_ARCHIVE_INPUT_BYTES", archive.stat().st_size - 1)
+
+    with pytest.raises(TransferError, match="archive input exceeds security limit"):
+        verify(archive)
+
+
+def test_verify_rejects_member_over_individual_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    archive = tmp_path / "large.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("payload/file.txt", b"xx")
+    monkeypatch.setattr(core, "MAX_ARCHIVE_MEMBER_BYTES", 1)
+
+    with pytest.raises(TransferError, match="archive member size limit exceeded"):
+        verify(archive)
+
+
+def test_verify_rejects_encrypted_zip_member_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    archive = tmp_path / "encrypted.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("payload/file.txt", b"x")
+    original_infolist = zipfile.ZipFile.infolist
+
+    def encrypted_infolist(self):
+        members = original_infolist(self)
+        members[0].flag_bits |= 0x1
+        return members
+
+    monkeypatch.setattr(zipfile.ZipFile, "infolist", encrypted_infolist)
+    with pytest.raises(TransferError, match="encrypted archive member"):
+        verify(archive)
+
+
+def test_verify_rejects_excessive_zip_compression_ratio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    archive = tmp_path / "ratio.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as output:
+        output.writestr("payload/file.txt", b"x" * 100)
+    monkeypatch.setattr(core, "MAX_COMPRESSION_RATIO", 1)
+
+    with pytest.raises(TransferError, match="compression ratio limit exceeded"):
+        verify(archive)
+
+
 @pytest.mark.parametrize("kind", ["zip", "tar"])
-def test_verify_rejects_archives_over_member_limit(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str
-):
+def test_verify_rejects_archives_over_member_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str):
     archive = tmp_path / f"many.{kind}"
     if kind == "zip":
         with zipfile.ZipFile(archive, "w") as output:
@@ -207,9 +247,7 @@ def test_verify_rejects_archives_over_member_limit(
         verify(archive)
 
 
-def test_verify_converts_recognized_corrupt_zip_to_transfer_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_verify_converts_recognized_corrupt_zip_to_transfer_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     archive = tmp_path / "corrupt.zip"
     archive.write_bytes(b"not a zip")
     monkeypatch.setattr(core.zipfile, "is_zipfile", lambda _path: True)
@@ -218,9 +256,7 @@ def test_verify_converts_recognized_corrupt_zip_to_transfer_error(
         verify(archive)
 
 
-def test_verify_converts_recognized_corrupt_tar_to_transfer_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_verify_converts_recognized_corrupt_tar_to_transfer_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     archive = tmp_path / "corrupt.tar"
     archive.write_bytes(b"not a tar")
     monkeypatch.setattr(core.tarfile, "is_tarfile", lambda _path: True)
@@ -229,9 +265,7 @@ def test_verify_converts_recognized_corrupt_tar_to_transfer_error(
         verify(archive)
 
 
-def test_verify_rejects_tar_member_without_extractable_data(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_verify_rejects_tar_member_without_extractable_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     archive = tmp_path / "missing-data.tar"
     archive.write_bytes(b"placeholder")
     member = tarfile.TarInfo("package/payload/file.txt")

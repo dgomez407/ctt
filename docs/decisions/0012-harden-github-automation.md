@@ -1,6 +1,6 @@
 # ADR-012: Harden GitHub automation and release provenance
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

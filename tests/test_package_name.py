@@ -27,8 +27,7 @@ def test_distribution_and_console_script_are_named_controlled_text_transfer():
 
     assert installed.metadata["Name"] == "controlled-text-transfer"
     assert any(
-        entry.name == "ctt" and entry.value == "controlled_text_transfer.cli:main"
-        for entry in installed.entry_points
+        entry.name == "ctt" and entry.value == "controlled_text_transfer.cli:main" for entry in installed.entry_points
     )
     with pytest.raises(PackageNotFoundError):
         distribution("cds")

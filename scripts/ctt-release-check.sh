@@ -54,9 +54,14 @@ if command -v python >/dev/null 2>&1; then
 elif command -v python3 >/dev/null 2>&1; then
     python_command="python3"
 else
-    printf 'error: Python 3.12 or newer is required\n' >&2
+    printf 'error: Python 3.12.13 or newer is required\n' >&2
     exit 2
 fi
+if ! "$python_command" -c 'import sys; raise SystemExit(sys.version_info < (3, 12, 13))'; then
+    printf 'error: Python 3.12.13 or newer is required\n' >&2
+    exit 2
+fi
+
 
 if ! git -C "$repository" rev-parse --verify --quiet "origin/main^{commit}" >/dev/null; then
     printf 'error: local origin/main is unavailable; fetch it while online first\n' >&2

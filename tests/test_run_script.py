@@ -159,6 +159,7 @@ def test_security_scans_cover_application_and_development_scripts():
     report_script = Path("scripts/report.py").read_text(encoding="utf-8")
 
     assert "bandit -r src scripts" in run_script
+    assert "pymarkdown scan ." in run_script
     assert '"bandit", "-r", "src", "scripts"' in report_script
 
 
@@ -181,7 +182,7 @@ def test_ci_workflow_uses_locked_canonical_quality_gate_for_supported_pythons():
     test_job = workflow["jobs"]["test"]
     steps = test_job["steps"]
 
-    assert test_job["strategy"]["matrix"]["python-version"] == ["3.12", "3.14"]
+    assert test_job["strategy"]["matrix"]["python-version"] == ["3.12.13", "3.14"]
     assert {"run": "uv sync --frozen --extra dev"} in steps
     assert {"run": "bash scripts/run.sh check"} in steps
     assert all("pip install" not in step.get("run", "") for step in steps)

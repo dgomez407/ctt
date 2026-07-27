@@ -105,9 +105,7 @@ def test_preflight_returns_one_deterministic_decision_per_candidate(tmp_path: Pa
     assert json.loads(json.dumps(report.to_dict()))["profile"] == "generic-text-v1"
 
 
-def test_preflight_rejects_oversized_file_without_reading_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_preflight_rejects_oversized_file_without_reading_it(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = tmp_path / "source"
     source.mkdir()
     oversized = source / "large.txt"
@@ -137,9 +135,7 @@ def test_preflight_reads_file_at_exact_size_limit(tmp_path: Path):
     assert report.decisions[0].status == "accepted"
 
 
-def test_preflight_reports_control_characters_in_relative_paths(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_preflight_reports_control_characters_in_relative_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = tmp_path / "source"
     source.mkdir()
     candidate = source / "safe.txt"
@@ -365,9 +361,7 @@ def test_direct_policy_objects_are_validated_before_source_access(tmp_path: Path
         preflight(missing_source, policy)
 
 
-def test_optional_hash_dependency_is_validated_before_scanning(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_optional_hash_dependency_is_validated_before_scanning(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = tmp_path / "source"
     source.mkdir()
     monkeypatch.setitem(__import__("sys").modules, "blake3", None)

@@ -1,6 +1,6 @@
 # ADR-006: Publish one artifact and verify declared signatures
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

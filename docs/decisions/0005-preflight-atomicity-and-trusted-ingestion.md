@@ -1,6 +1,6 @@
 # ADR-005: Preflight, atomic publication, and trusted ingestion
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

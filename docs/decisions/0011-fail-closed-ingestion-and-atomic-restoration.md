@@ -1,6 +1,6 @@
 # ADR-011: Fail closed at package boundaries and restore atomically
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

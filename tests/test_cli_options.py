@@ -53,26 +53,14 @@ EXPECTED_OPTIONS = {
 
 
 def _long_options(parser: argparse.ArgumentParser) -> set[str]:
-    return {
-        option
-        for action in parser._actions
-        for option in action.option_strings
-        if option.startswith("--")
-    }
+    return {option for action in parser._actions for option in action.option_strings if option.startswith("--")}
 
 
 def test_help_only_advertises_options_that_affect_each_command():
     parser = _parser()
-    subparsers = next(
-        action for action in parser._actions if isinstance(action, argparse._SubParsersAction)
-    )
+    subparsers = next(action for action in parser._actions if isinstance(action, argparse._SubParsersAction))
     actual = {"root": _long_options(parser)}
-    actual.update(
-        {
-            command: _long_options(command_parser)
-            for command, command_parser in subparsers.choices.items()
-        }
-    )
+    actual.update({command: _long_options(command_parser) for command, command_parser in subparsers.choices.items()})
 
     assert actual == EXPECTED_OPTIONS
 
@@ -213,9 +201,7 @@ def test_preflight_policy_changes_acceptance_and_json_serializes_details(tmp_pat
         ("restore", "restore_complete"),
     ],
 )
-def test_log_json_emits_audit_event_for_supported_commands(
-    command: str, event: str, tmp_path: Path, capsys
-):
+def test_log_json_emits_audit_event_for_supported_commands(command: str, event: str, tmp_path: Path, capsys):
     source = _source(tmp_path)
     transfer = tmp_path / "transfer"
     prepare(source, transfer, Policy())
@@ -231,9 +217,7 @@ def test_log_json_emits_audit_event_for_supported_commands(
 
 
 @pytest.mark.parametrize("command", ["verify", "restore", "diff"])
-def test_require_signature_is_enforced_by_every_consuming_command(
-    command: str, tmp_path: Path, capsys
-):
+def test_require_signature_is_enforced_by_every_consuming_command(command: str, tmp_path: Path, capsys):
     source = _source(tmp_path)
     transfer = tmp_path / "transfer"
     prepare(source, transfer, Policy())
@@ -250,9 +234,7 @@ def test_require_signature_is_enforced_by_every_consuming_command(
 
 
 @pytest.mark.parametrize("command", ["verify", "restore", "diff"])
-def test_allow_unverified_signature_is_an_explicit_escape_hatch(
-    command: str, tmp_path: Path, capsys
-):
+def test_allow_unverified_signature_is_an_explicit_escape_hatch(command: str, tmp_path: Path, capsys):
     source = _source(tmp_path)
     transfer = tmp_path / "transfer"
     prepare(source, transfer, Policy(), signer=_FakeSigner())

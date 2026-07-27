@@ -1,0 +1,127 @@
+# Security Hardening Contract
+
+[Documentation index](./README.md) | [Security guidance](../SECURITY.md)
+
+CTT treats source trees, package directories, archives, manifests, signature
+sidecars, and restore destinations as separate trust boundaries. It is not a
+Cross Domain Solution (CDS), malware scanner, or content-disarm system.
+
+All limits use binary units: one KiB is 1,024 bytes and one MiB is 1,048,576
+bytes. These verifier ceilings are compiled into CTT. Transferred policy and
+manifest data cannot raise them.
+
+| Resource | Hard ceiling |
+| --- | ---: |
+| Manifest | 2 MiB |
+| Detached signature | 256 KiB |
+| External-command stdout or stderr | 256 KiB per stream |
+| Archive input | 128 MiB |
+| Expanded archive | 256 MiB |
+| Archive members | 2,000 |
+| Manifest file records | 2,000 |
+| Individual member or payload file | 10 MiB |
+| Compression ratio | 100:1 |
+| Relative path depth | 16 components |
+| Relative path length | 180 characters |
+| Streaming buffer | 64 KiB |
+
+Directory packages receive the same manifest, signature, file-count,
+individual-size, aggregate-size, and path validation as archive packages.
+ZIP, TAR, and TGZ additionally receive compressed-input, member, expansion,
+type, encryption, and compression-ratio validation.
+
+Expanded bytes, member count, and member size are the primary archive-bomb
+controls. The ratio check is supplemental and can reject unusually repetitive
+legitimate text. Split a transfer that exceeds any ceiling into independently
+prepared, transferred, verified, and restored packages. Do not increase a
+limit merely to force a rejected package through a CDS.
+
+## Stable file access
+
+Security-sensitive reads inspect a path with `lstat`, reject links, junctions,
+and non-regular files, open one descriptor with `O_NOFOLLOW` when the platform
+provides it, and compare pre-open, descriptor, and post-open file identities.
+Content and hashes are then obtained from that descriptor. A replacement,
+type change, size change, missing path, or read failure aborts processing.
+
+This narrows time-of-check/time-of-use exposure. Host filesystem semantics,
+privileged attackers, hardware failure, and operating-system compromise remain
+outside CTT's security boundary.
+
+## Streaming archive ingestion
+
+Archive members are copied into temporary staging in 64 KiB chunks. CTT
+accounts for observed bytes independently of archive metadata, requires
+observed and declared member sizes to agree, and removes staging after any
+failure. It rejects traversal, excessive paths, duplicate members, multiple
+roots, links, special files, encrypted ZIP members, excessive compression,
+truncation, and unexpected package layout.
+
+## Authenticated signer identity
+
+`SignatureVerification(valid, identity)` distinguishes cryptographic validity
+from the identity authenticated by the trusted verifier. New identity-bearing
+manifests require a structured result whose non-empty identity exactly matches
+the signed manifest identity. Matching is case-sensitive; normalization is the
+external verifier's responsibility.
+
+Legacy manifests without `identity` may temporarily use boolean verifiers.
+Boolean verifiers cannot authenticate identity-bearing manifests. `key_label`
+is informational metadata only and must never be used for authorization.
+Successful checksum or integrity verification is not proof of signer
+authenticity.
+
+Structured external verification emits bounded UTF-8 JSON:
+
+```json
+{"valid": true, "identity": "SHA256:approved-fingerprint"}
+```
+
+Unknown fields, malformed JSON, invalid identities, excessive output,
+non-zero exit status, and contradictory results fail closed. CTT drains stdout
+and stderr concurrently and retains at most 256 KiB from each stream. Crossing
+either ceiling stops capture and terminates the command, so the limit applies
+during execution rather than after unbounded buffering. Signing raises a
+controlled error and verification returns an invalid result. Private keys and
+passphrases remain outside CTT.
+
+`--allow-unverified-signature` deliberately bypasses authenticity checking and
+is a residual risk. Use it only for explicitly approved integrity-only
+inspection; do not treat its success as authorization to restore.
+
+## Zero-dependency bootstrap
+
+The embedded bootstrap requires Python 3.12.13 or newer and restores directory or
+ZIP packages without third-party dependencies. It uses stable bounded reads and the
+same 2 MiB manifest, 128 MiB ZIP input, 256 MiB expansion, 2,000-member, 10 MiB
+member, 100:1 ratio, 16-component path-depth, 180-character path, and 64 KiB
+streaming ceilings listed above. It rejects linked package sources and entries,
+duplicate or encrypted ZIP members, special members, multiple manifests, unsafe
+paths, and size mismatches.
+
+The bootstrap deliberately has no signer integration. A manifest signature or
+detached signature sidecar therefore fails closed with instructions to use an
+installed `ctt restore` workflow backed by a trusted verifier. This preserves
+bootstrap reliability for unsigned installation bundles without representing
+integrity-only restoration as authenticated restoration.
+
+## Failure response
+
+Treat limit, traversal, checksum, signature, signer-identity, encryption, and
+unexpected-member failures as security events. Preserve the package and audit
+output according to local evidence-handling rules, do not restore it, and
+escalate through the approved CDS procedure.
+
+## Requirement-to-test matrix
+
+| Contract | Automated evidence |
+| --- | --- |
+| Stable descriptors reject non-regular files, identity swaps, read failures, and overruns | `tests/test_hardening_limits.py`, `tests/test_security_invariants.py` |
+| Manifest, member, aggregate, path, archive-input, and compression ceilings | `tests/test_hardening_limits.py`, `tests/test_archive_security.py` |
+| Directory, ZIP, TAR, and TGZ round trips | `tests/test_archive_security.py`, `tests/test_core.py` |
+| Links, traversal, duplicates, encryption, truncation, and cleanup | `tests/test_archive_security.py`, `tests/test_security_invariants.py` |
+| Legacy and identity-bearing signatures | `tests/test_signing.py`, `tests/test_cli_options.py` |
+| Concurrent bounded signer/verifier streams, cleanup, timeouts, and structured JSON | `tests/test_signing.py`, `tests/test_hardening_limits.py` |
+| Policy example and immutable verifier/policy separation | `tests/test_documentation_contracts.py`, `tests/test_policy_and_transformation.py` |
+| CLI options and help | `tests/test_cli_options.py`, `tests/test_cli_documentation.py` |
+| Bootstrap unsigned round trips and fail-closed limits, links, archive metadata, manifests, and signatures | `tests/test_bootstrap.py`, `tests/test_self_package.py` |

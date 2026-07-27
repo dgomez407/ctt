@@ -19,7 +19,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any, Optional, cast
 
-from .signing import ManifestSigner, sign_manifest, verify_manifest_signature
+from .signing import (
+    ManifestSigner,
+    SignatureVerification,
+    sign_manifest,
+    verify_manifest_signature,
+)
 
 DEFAULT_EXTENSIONS = {
     ".py",
@@ -72,8 +77,16 @@ FILE_RECORD_FIELDS = {
 }
 MANIFEST_REQUIRED_FIELDS = {"format_version", "hash_algorithm", "files"}
 MANIFEST_OPTIONAL_FIELDS = {"skipped", "signature"}
-MAX_ARCHIVE_MEMBERS = 10_001
-MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024
+MAX_MANIFEST_BYTES = 2 * 1024 * 1024
+MAX_ARCHIVE_INPUT_BYTES = 128 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 2_000
+MAX_ARCHIVE_MEMBER_BYTES = 10 * 1024 * 1024
+MAX_COMPRESSION_RATIO = 100
+MAX_SECURITY_PATH_DEPTH = 16
+MAX_SECURITY_PATH_LENGTH = 180
+STREAM_BUFFER_BYTES = 64 * 1024
+MAX_SIGNER_IDENTITY_LENGTH = 512
 
 
 class TransferError(RuntimeError):
@@ -125,11 +138,64 @@ def digest(data: bytes, algorithm: str = "sha256") -> str:
         try:
             import blake3
         except ImportError as exc:
-            raise TransferError(
-                "blake3 requested but optional dependency is not installed"
-            ) from exc
+            raise TransferError("blake3 requested but optional dependency is not installed") from exc
         return cast(str, blake3.blake3(data).hexdigest())
     return hashlib.new(algorithm, data).hexdigest()
+
+
+def _read_stable_file(path: Path, maximum: int, label: str) -> bytes:
+    """Read a bounded regular file through one descriptor, rejecting path races."""
+    try:
+        before = path.lstat()
+        if _stat_is_link(before) or not stat.S_ISREG(before.st_mode):
+            raise TransferError(f"{label} must be a regular unlinked file")
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
+        try:
+            opened = os.fstat(descriptor)
+            after = path.lstat()
+            before_identity = (before.st_dev, before.st_ino, stat.S_IFMT(before.st_mode))
+            opened_identity = (opened.st_dev, opened.st_ino, stat.S_IFMT(opened.st_mode))
+            after_identity = (after.st_dev, after.st_ino, stat.S_IFMT(after.st_mode))
+            if before_identity != opened_identity or opened_identity != after_identity:
+                raise TransferError(f"{label} changed while it was opened")
+            if opened.st_size > maximum:
+                raise TransferError(f"{label} exceeds the security limit")
+            chunks: list[bytes] = []
+            total = 0
+            while chunk := os.read(
+                descriptor,
+                min(STREAM_BUFFER_BYTES, maximum + 1 - total),
+            ):
+                total += len(chunk)
+                if total > maximum:
+                    raise TransferError(f"{label} exceeds the security limit")
+                chunks.append(chunk)
+            return b"".join(chunks)
+        finally:
+            os.close(descriptor)
+    except TransferError:
+        raise
+    except OSError as exc:
+        raise TransferError(f"{label} could not be read safely") from exc
+
+
+def _digest_file(path: Path, algorithm: str, maximum: int, label: str) -> tuple[str, int]:
+    """Hash a stable regular file in bounded chunks and return digest and size."""
+    data = _read_stable_file(path, maximum, label)
+    return digest(data, algorithm), len(data)
+
+
+def _validated_signer_identity(value: object) -> str:
+    """Validate a signed or authenticated signer identity."""
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > MAX_SIGNER_IDENTITY_LENGTH
+        or any(ord(character) < 32 for character in value)
+    ):
+        raise TransferError("invalid manifest signer identity")
+    return value
 
 
 @dataclass(frozen=True)
@@ -182,9 +248,7 @@ class Policy:
 
     def validate(self) -> CDSProfile:
         """Validate every field and hash dependency before source traversal."""
-        if not isinstance(self.extensions, set) or any(
-            not isinstance(item, str) for item in self.extensions
-        ):
+        if not isinstance(self.extensions, set) or any(not isinstance(item, str) for item in self.extensions):
             raise _policy_error("extensions must be a set of strings")
         if not isinstance(self.names, set) or any(not isinstance(item, str) for item in self.names):
             raise _policy_error("names must be a set of strings")
@@ -213,10 +277,7 @@ class Policy:
         for name, value in integer_fields.items():
             if not isinstance(value, int) or isinstance(value, bool) or value < 1:
                 raise _policy_error(f"{name} must be an integer of at least 1")
-        if (
-            not isinstance(self.hash_algorithm, str)
-            or self.hash_algorithm not in APPROVED_HASH_ALGORITHMS
-        ):
+        if not isinstance(self.hash_algorithm, str) or self.hash_algorithm not in APPROVED_HASH_ALGORITHMS:
             raise _policy_error("unsupported hash_algorithm")
         if not isinstance(self.package_format, str) or self.package_format not in PACKAGE_FORMATS:
             raise _policy_error("unsupported package_format")
@@ -392,10 +453,7 @@ class FileRecord:
         if any(not isinstance(values[name], str) for name in string_fields):
             raise TransferError("invalid manifest: invalid file record string")
         integer_fields = ("original_size", "transfer_size", "mode")
-        if any(
-            not isinstance(values[name], int) or isinstance(values[name], bool)
-            for name in integer_fields
-        ):
+        if any(not isinstance(values[name], int) or isinstance(values[name], bool) for name in integer_fields):
             raise TransferError("invalid manifest: invalid file record integer")
         if values["original_size"] < 0 or values["transfer_size"] < 0:
             raise TransferError("invalid manifest: negative file size")
@@ -407,9 +465,7 @@ class FileRecord:
                 character not in "0123456789abcdef" for character in value
             ):
                 raise TransferError("invalid manifest: invalid file hash")
-        if not isinstance(values["bom_added"], bool) or not isinstance(
-            values["original_bom"], bool
-        ):
+        if not isinstance(values["bom_added"], bool) or not isinstance(values["original_bom"], bool):
             raise TransferError("invalid manifest: invalid file record boolean")
         return cls(**values)
 
@@ -435,8 +491,8 @@ class Manifest:
     def read(cls, path: Path) -> Manifest:
         """Read and validate a manifest with controlled schema errors."""
         try:
-            raw = json.loads(path.read_text(encoding="utf-8-sig"))
-        except json.JSONDecodeError as exc:
+            raw = json.loads(_read_stable_file(path, MAX_MANIFEST_BYTES, "manifest").decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise TransferError("invalid manifest: invalid JSON") from exc
         return cls.from_dict(raw)
 
@@ -462,16 +518,40 @@ class Manifest:
         files = values["files"]
         if not isinstance(files, list):
             raise TransferError("invalid manifest: files must be a list")
+        if len(files) > MAX_ARCHIVE_MEMBERS:
+            raise TransferError("invalid manifest: file count exceeds security limit")
         skipped = values.get("skipped", [])
         if not isinstance(skipped, list) or any(not isinstance(item, str) for item in skipped):
             raise TransferError("invalid manifest: skipped must be a list of strings")
         signature = values.get("signature")
         if signature is not None and not isinstance(signature, dict):
             raise TransferError("invalid manifest: signature must be an object or null")
+        if signature is not None:
+            allowed_signature_fields = {"algorithm", "key_label", "identity"}
+            if (
+                set(signature) - allowed_signature_fields
+                or not isinstance(signature.get("algorithm"), str)
+                or not isinstance(signature.get("key_label"), str)
+            ):
+                raise TransferError("invalid manifest signature metadata")
+            if "identity" in signature:
+                _validated_signer_identity(signature["identity"])
+        records = [FileRecord.from_dict(record) for record in files]
+        if sum(record.transfer_size for record in records) > MAX_ARCHIVE_BYTES:
+            raise TransferError("invalid manifest: aggregate size exceeds security limit")
+        for record in records:
+            for value in (record.original_path, record.transfer_path):
+                path_value = PurePosixPath(value)
+                if len(value) > MAX_SECURITY_PATH_LENGTH:
+                    raise TransferError("invalid manifest: path exceeds security length limit")
+                if len(path_value.parts) > MAX_SECURITY_PATH_DEPTH:
+                    raise TransferError("invalid manifest: path exceeds security depth limit")
+            if record.transfer_size > MAX_ARCHIVE_MEMBER_BYTES:
+                raise TransferError("invalid manifest: file size exceeds security limit")
         return cls(
             format_version=format_version,
             hash_algorithm=hash_algorithm,
-            files=[FileRecord.from_dict(record) for record in files],
+            files=records,
             skipped=skipped,
             signature=cast(Optional[dict[str, Any]], signature),
         )
@@ -486,9 +566,7 @@ def _safe_relative(root: Path, candidate: Path) -> Path:
 
 def _ignored(rel: str, patterns: Iterable[str]) -> bool:
     return any(
-        fnmatch.fnmatch(rel, p) or fnmatch.fnmatch(Path(rel).name, p)
-        for p in patterns
-        if p and not p.startswith("#")
+        fnmatch.fnmatch(rel, p) or fnmatch.fnmatch(Path(rel).name, p) for p in patterns if p and not p.startswith("#")
     )
 
 
@@ -528,18 +606,12 @@ def _content_reasons(text: str, policy: Policy, profile: CDSProfile) -> list[str
     reasons: list[str] = []
     if any(ord(character) < 32 and character not in "\t\r\n" for character in text):
         reasons.append("control_character")
-    if (not policy.allow_unicode or not profile.allow_unicode) and any(
-        ord(character) > 127 for character in text
-    ):
+    if (not policy.allow_unicode or not profile.allow_unicode) and any(ord(character) > 127 for character in text):
         reasons.append("unicode_not_allowed")
     without_crlf = text.replace("\r\n", "")
     if "\r" in without_crlf:
         reasons.append("unsupported_line_endings")
-    if (
-        not policy.allow_mixed_line_endings
-        and "\r\n" in text
-        and ("\n" in without_crlf or "\r" in without_crlf)
-    ):
+    if not policy.allow_mixed_line_endings and "\r\n" in text and ("\n" in without_crlf or "\r" in without_crlf):
         reasons.append("mixed_line_endings")
     if any(len(line) > policy.max_line_length for line in text.splitlines()):
         reasons.append("line_too_long")
@@ -559,9 +631,7 @@ def _rejected_decision(rel: str, reasons: list[str]) -> PreflightDecision:
     )
 
 
-def _scan_source(
-    source: Path, policy: Policy
-) -> tuple[PreflightReport, dict[str, bytes], dict[str, int]]:
+def _scan_source(source: Path, policy: Policy) -> tuple[PreflightReport, dict[str, bytes], dict[str, int]]:
     profile = policy.validate()
     source = source.resolve()
     if not source.is_dir():
@@ -573,9 +643,7 @@ def _scan_source(
     modes: dict[str, int] = {}
     accepted_files = 0
     accepted_bytes = 0
-    paths = sorted(
-        path for path in source.rglob("*") if path.is_file() and path.name != policy.ignore_file
-    )
+    paths = sorted(path for path in source.rglob("*") if path.is_file() and path.name != policy.ignore_file)
     for path in paths:
         if _is_link(path):
             rel = path.relative_to(source).as_posix()
@@ -612,7 +680,7 @@ def _scan_source(
         data = b""
         if size <= policy.max_bytes:
             try:
-                data = path.read_bytes()
+                data = _read_stable_file(path, policy.max_bytes, f"source file {rel}")
                 after = path.stat()
                 if (
                     before.st_size,
@@ -649,11 +717,7 @@ def _scan_source(
                 transformations=(
                     [
                         "append_txt_suffix",
-                        *(
-                            ["add_utf8_bom"]
-                            if policy.add_bom and not data.startswith(b"\xef\xbb\xbf")
-                            else []
-                        ),
+                        *(["add_utf8_bom"] if policy.add_bom and not data.startswith(b"\xef\xbb\xbf") else []),
                     ]
                     if not reasons
                     else []
@@ -728,7 +792,11 @@ def _archive_parts(name: str) -> tuple[str, ...]:
     path = PurePosixPath(name)
     if path.is_absolute() or ".." in path.parts:
         raise TransferError("unsafe archive member path")
-    return tuple(part for part in path.parts if part not in {"", "."})
+    parts = tuple(part for part in path.parts if part not in {"", "."})
+    normalized = "/".join(parts)
+    if len(normalized) > MAX_SECURITY_PATH_LENGTH or len(parts) > MAX_SECURITY_PATH_DEPTH:
+        raise TransferError("archive member path exceeds security limit")
+    return parts
 
 
 def _archive_relative_parts(names: list[str], *, rooted: bool) -> list[tuple[str, ...]]:
@@ -758,6 +826,37 @@ def _write_archive_member(root: Path, parts: tuple[str, ...], data: bytes) -> No
     destination.write_bytes(data)
 
 
+def _stream_archive_member(
+    root: Path,
+    parts: tuple[str, ...],
+    source: Any,
+    *,
+    declared_size: int,
+    expanded_total: int,
+) -> tuple[int, int]:
+    """Stream one archive member to staging while enforcing observed byte limits."""
+    if not parts:
+        return 0, expanded_total
+    if declared_size < 0 or declared_size > MAX_ARCHIVE_MEMBER_BYTES:
+        raise TransferError("archive member size limit exceeded")
+    destination = root.joinpath(*parts)
+    _safe_relative(root, destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with destination.open("xb") as output:
+        while chunk := source.read(STREAM_BUFFER_BYTES):
+            written += len(chunk)
+            expanded_total += len(chunk)
+            if written > MAX_ARCHIVE_MEMBER_BYTES:
+                raise TransferError("archive member size limit exceeded")
+            if expanded_total > MAX_ARCHIVE_BYTES:
+                raise TransferError("archive expansion limit exceeded")
+            output.write(chunk)
+    if written != declared_size:
+        raise TransferError("archive member size mismatch")
+    return written, expanded_total
+
+
 def _extract_zip(archive: Path, root: Path) -> None:
     try:
         with zipfile.ZipFile(archive) as source:
@@ -771,6 +870,7 @@ def _extract_zip(archive: Path, root: Path) -> None:
                 rooted=False,
             )
             seen: set[tuple[str, ...]] = set()
+            expanded_total = 0
             for member, parts in zip(members, parts_list, strict=True):
                 if parts in seen:
                     raise TransferError("duplicate archive member")
@@ -778,11 +878,29 @@ def _extract_zip(archive: Path, root: Path) -> None:
                 mode = member.external_attr >> 16
                 if stat.S_ISLNK(mode):
                     raise TransferError("unsupported archive member")
+                if member.flag_bits & 0x1:
+                    raise TransferError("encrypted archive member is not allowed")
                 if member.is_dir():
                     if parts:
                         root.joinpath(*parts).mkdir(parents=True, exist_ok=True)
                     continue
-                _write_archive_member(root, parts, source.read(member))
+                if member.file_size > MAX_ARCHIVE_MEMBER_BYTES:
+                    raise TransferError("archive member size limit exceeded")
+                if (
+                    member.file_size
+                    and member.compress_size == 0
+                    or member.compress_size
+                    and member.file_size > member.compress_size * MAX_COMPRESSION_RATIO
+                ):
+                    raise TransferError("archive compression ratio limit exceeded")
+                with source.open(member) as member_source:
+                    _, expanded_total = _stream_archive_member(
+                        root,
+                        parts,
+                        member_source,
+                        declared_size=member.file_size,
+                        expanded_total=expanded_total,
+                    )
     except zipfile.BadZipFile as exc:
         raise TransferError("invalid archive") from exc
 
@@ -802,6 +920,7 @@ def _extract_tar(archive: Path, root: Path) -> None:
             )
             parts_list = _archive_relative_parts(names, rooted=not rootless)
             seen: set[tuple[str, ...]] = set()
+            expanded_total = 0
             for member, parts in zip(members, parts_list, strict=True):
                 if parts in seen:
                     raise TransferError("duplicate archive member")
@@ -815,13 +934,34 @@ def _extract_tar(archive: Path, root: Path) -> None:
                 extracted = source.extractfile(member)
                 if extracted is None:
                     raise TransferError("invalid archive member")
-                _write_archive_member(root, parts, extracted.read())
+                _, expanded_total = _stream_archive_member(
+                    root,
+                    parts,
+                    extracted,
+                    declared_size=member.size,
+                    expanded_total=expanded_total,
+                )
+            try:
+                archive_size = archive.stat().st_size
+            except OSError as exc:
+                raise TransferError("archive could not be inspected safely") from exc
+            if (
+                archive_size == 0
+                and expanded_total
+                or (archive_size and expanded_total > archive_size * MAX_COMPRESSION_RATIO)
+            ):
+                raise TransferError("archive compression ratio limit exceeded")
     except (tarfile.TarError, EOFError) as exc:
         raise TransferError("invalid archive") from exc
 
 
 def _is_link(path: Path) -> bool:
     return path.is_symlink() or path.is_junction()
+
+
+def _stat_is_link(metadata: os.stat_result) -> bool:
+    """Return whether non-following metadata identifies a link or reparse point."""
+    return stat.S_ISLNK(metadata.st_mode) or bool(getattr(metadata, "st_reparse_tag", 0))
 
 
 def _payload_files(payload: Path) -> list[Path]:
@@ -835,29 +975,33 @@ def _payload_files(payload: Path) -> list[Path]:
         for name in directories:
             candidate = current_path / name
             if _is_link(candidate):
-                raise TransferError(
-                    f"linked package path is not allowed: {candidate.relative_to(payload)}"
-                )
+                raise TransferError(f"linked package path is not allowed: {candidate.relative_to(payload)}")
         for name in filenames:
             candidate = current_path / name
             if _is_link(candidate):
-                raise TransferError(
-                    "symlink transfer file is not allowed: "
-                    f"{candidate.relative_to(payload.parent)}"
-                )
+                raise TransferError("symlink transfer file is not allowed: " f"{candidate.relative_to(payload.parent)}")
             files.append(candidate)
     return files
 
 
 @contextmanager
 def _package_directory(package: Path) -> Iterator[Path]:
-    if _is_link(package):
+    try:
+        package_metadata = package.lstat()
+    except FileNotFoundError:
+        raise
+    except OSError as exc:
+        raise TransferError("archive could not be inspected safely") from exc
+    if _stat_is_link(package_metadata):
         raise TransferError(f"linked package path is not allowed: {package}")
-    if package.is_dir():
+    if stat.S_ISDIR(package_metadata.st_mode):
         yield package
         return
-    if not package.is_file():
+    if not stat.S_ISREG(package_metadata.st_mode):
         raise FileNotFoundError(package)
+    archive_size = package_metadata.st_size
+    if archive_size > MAX_ARCHIVE_INPUT_BYTES:
+        raise TransferError("archive input exceeds security limit")
     with tempfile.TemporaryDirectory(prefix="ctt-archive-") as temporary:
         root = Path(temporary) / "package"
         root.mkdir()
@@ -923,13 +1067,17 @@ def prepare(
                 source_modes[rel],
             )
         )
+    signature_metadata: Optional[dict[str, Any]] = None
+    if signer is not None:
+        signature_metadata = {"algorithm": signer.algorithm, "key_label": key_label}
+        signer_identity = getattr(signer, "identity", None)
+        if signer_identity is not None:
+            signature_metadata["identity"] = _validated_signer_identity(signer_identity)
     manifest = Manifest(
         hash_algorithm=policy.hash_algorithm,
         files=sorted(records, key=lambda x: x.original_path),
         skipped=sorted(skipped),
-        signature=(
-            {"algorithm": signer.algorithm, "key_label": key_label} if signer is not None else None
-        ),
+        signature=signature_metadata,
     )
     if not dry_run:
         transfer.parent.mkdir(parents=True, exist_ok=True)
@@ -961,12 +1109,14 @@ def prepare(
                 if bootstrap_file is not None and bootstrap_file.is_file():
                     (stage / "bootstrap.py.txt").write_bytes(bootstrap_file.read_bytes())
             if signer is not None:
-                sign_manifest(
+                written_metadata = sign_manifest(
                     stage / "ctt-manifest.json.txt",
                     stage / "ctt-manifest.sig",
                     signer,
                     key_label=key_label,
                 )
+                if written_metadata != signature_metadata:
+                    raise TransferError("signer metadata changed during preparation")
             _verify_directory(
                 stage,
                 signer=signer,
@@ -1032,11 +1182,29 @@ def _verify_directory(
                 raise TransferError("manifest signature metadata is required")
             if manifest.signature.get("algorithm") != signer.algorithm:
                 raise TransferError("manifest signature algorithm mismatch")
-            if not verify_manifest_signature(
-                transfer / "ctt-manifest.json.txt",
-                signature_path,
-                signer,
-            ):
+            expected_identity = manifest.signature.get("identity")
+            if expected_identity is not None:
+                expected_identity = _validated_signer_identity(expected_identity)
+            try:
+                verification = verify_manifest_signature(
+                    transfer / "ctt-manifest.json.txt",
+                    signature_path,
+                    signer,
+                )
+            except ValueError as exc:
+                raise TransferError("manifest signature could not be read safely") from exc
+            if isinstance(verification, SignatureVerification):
+                if not verification.valid:
+                    raise TransferError("manifest signature verification failed")
+                if expected_identity is not None:
+                    if verification.identity is None:
+                        raise TransferError("authenticated signer identity is required")
+                    actual_identity = _validated_signer_identity(verification.identity)
+                    if actual_identity != expected_identity:
+                        raise TransferError("manifest signer identity mismatch")
+            elif expected_identity is not None:
+                raise TransferError("authenticated signer identity is required")
+            elif not verification:
                 raise TransferError("manifest signature verification failed")
     if manifest.format_version != 1:
         raise TransferError(f"unsupported manifest format version: {manifest.format_version}")
@@ -1061,9 +1229,15 @@ def _verify_directory(
             raise TransferError(f"transfer path is outside payload: {rec.transfer_path}") from exc
         if not path.is_file():
             raise TransferError(f"missing transfer file: {rec.transfer_path}")
-        if digest(path.read_bytes(), manifest.hash_algorithm) != rec.transfer_hash:
+        actual_hash, actual_size = _digest_file(
+            path,
+            manifest.hash_algorithm,
+            MAX_ARCHIVE_MEMBER_BYTES,
+            f"transfer file {rec.transfer_path}",
+        )
+        if actual_hash != rec.transfer_hash:
             raise TransferError(f"checksum mismatch: {rec.transfer_path}")
-        if path.stat().st_size != rec.transfer_size:
+        if actual_size != rec.transfer_size:
             raise TransferError(f"size mismatch: {rec.transfer_path}")
         expected_paths.add(path.resolve())
     for path in payload_files:
@@ -1139,7 +1313,17 @@ def diff(
         current_path = current.get(rel)
         if current_path is None:
             result["removed"].append(rel)
-        elif digest(current_path.read_bytes(), manifest.hash_algorithm) == record.original_hash:
+        elif (
+            digest(
+                _read_stable_file(
+                    current_path,
+                    MAX_ARCHIVE_MEMBER_BYTES,
+                    f"source file {rel}",
+                ),
+                manifest.hash_algorithm,
+            )
+            == record.original_hash
+        ):
             result["unchanged"].append(rel)
         else:
             result["modified"].append(rel)
@@ -1150,13 +1334,13 @@ def diff(
 
 
 def _restored_bytes(package: Path, record: FileRecord, algorithm: str) -> bytes:
-    data = (package / record.transfer_path).read_bytes()
-    data = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
-    data = (
-        b"\xef\xbb\xbf" + data
-        if record.original_bom and not data.startswith(b"\xef\xbb\xbf")
-        else data
+    data = _read_stable_file(
+        package / record.transfer_path,
+        MAX_ARCHIVE_MEMBER_BYTES,
+        f"transfer file {record.transfer_path}",
     )
+    data = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    data = b"\xef\xbb\xbf" + data if record.original_bom and not data.startswith(b"\xef\xbb\xbf") else data
     if len(data) != record.original_size:
         raise TransferError(f"restored size mismatch: {record.original_path}")
     if digest(data, algorithm) != record.original_hash:
@@ -1205,7 +1389,17 @@ def restore(
                     _safe_relative(stage, out)
                     out.parent.mkdir(parents=True, exist_ok=True)
                     out.write_bytes(data)
-                    if digest(out.read_bytes(), manifest.hash_algorithm) != rec.original_hash:
+                    if (
+                        digest(
+                            _read_stable_file(
+                                out,
+                                MAX_ARCHIVE_MEMBER_BYTES,
+                                f"staged file {rec.original_path}",
+                            ),
+                            manifest.hash_algorithm,
+                        )
+                        != rec.original_hash
+                    ):
                         raise TransferError(f"staged checksum mismatch: {rec.original_path}")
                     os.chmod(out, rec.mode)
                 if destination.exists() or _is_link(destination):

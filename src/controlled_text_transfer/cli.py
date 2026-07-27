@@ -15,16 +15,12 @@ from .signing import ManifestSigner
 
 def _add_policy_option(parser: argparse.ArgumentParser) -> None:
     """Add source-policy selection to a policy-aware command."""
-    parser.add_argument(
-        "--policy", type=Path, help="load compatibility and content rules from YAML"
-    )
+    parser.add_argument("--policy", type=Path, help="load compatibility and content rules from YAML")
 
 
 def _add_log_option(parser: argparse.ArgumentParser) -> None:
     """Add structured audit logging to a command that emits audit events."""
-    parser.add_argument(
-        "--log-json", action="store_true", help="write one JSON audit event to stderr"
-    )
+    parser.add_argument("--log-json", action="store_true", help="write one JSON audit event to stderr")
 
 
 class JsonFormatter(logging.Formatter):
@@ -37,9 +33,7 @@ class JsonFormatter(logging.Formatter):
                 "timestamp": datetime.now(UTC).isoformat(),
                 "level": record.levelname,
                 "event": record.getMessage(),
-                **{
-                    k: v for k, v in record.__dict__.items() if k in {"files", "skipped", "dry_run"}
-                },
+                **{k: v for k, v in record.__dict__.items() if k in {"files", "skipped", "dry_run"}},
             }
         )
 
@@ -51,25 +45,15 @@ def _parser() -> argparse.ArgumentParser:
     parser.set_defaults(policy=None, log_json=False)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    prepare_parser = commands.add_parser(
-        "prepare", help="create and self-verify a transfer package"
-    )
+    prepare_parser = commands.add_parser("prepare", help="create and self-verify a transfer package")
     _add_policy_option(prepare_parser)
     _add_log_option(prepare_parser)
     prepare_parser.add_argument("source", type=Path, help="directory containing source text files")
     prepare_parser.add_argument("transfer", type=Path, help="new package path")
-    prepare_parser.add_argument(
-        "--dry-run", action="store_true", help="validate without writing a package"
-    )
-    prepare_parser.add_argument(
-        "--strict", action="store_true", help="fail if any file is rejected"
-    )
-    prepare_parser.add_argument(
-        "--json-report", type=Path, help="write the preflight report to a file"
-    )
-    prepare_parser.add_argument(
-        "--sign", action="store_true", help="sign with a trusted injected signer"
-    )
+    prepare_parser.add_argument("--dry-run", action="store_true", help="validate without writing a package")
+    prepare_parser.add_argument("--strict", action="store_true", help="fail if any file is rejected")
+    prepare_parser.add_argument("--json-report", type=Path, help="write the preflight report to a file")
+    prepare_parser.add_argument("--sign", action="store_true", help="sign with a trusted injected signer")
     prepare_parser.add_argument(
         "--key-label",
         default="external-managed-key",
@@ -81,9 +65,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_policy_option(self_package_parser)
     _add_log_option(self_package_parser)
-    self_package_parser.add_argument(
-        "destination", type=Path, help="new self-bootstrap package path"
-    )
+    self_package_parser.add_argument("destination", type=Path, help="new self-bootstrap package path")
     self_package_parser.add_argument(
         "--source", type=Path, help="source directory to package (default: current directory)"
     )
@@ -93,25 +75,17 @@ def _parser() -> argparse.ArgumentParser:
         choices=["directory", "zip", "tar", "tgz"],
         help="package output format (default: zip)",
     )
-    self_package_parser.add_argument(
-        "--dry-run", action="store_true", help="validate without writing a package"
-    )
+    self_package_parser.add_argument("--dry-run", action="store_true", help="validate without writing a package")
 
-    preflight_parser = commands.add_parser(
-        "preflight", help="evaluate source files without packaging"
-    )
+    preflight_parser = commands.add_parser("preflight", help="evaluate source files without packaging")
     _add_policy_option(preflight_parser)
     preflight_parser.add_argument("source", type=Path, help="directory to evaluate")
-    preflight_parser.add_argument(
-        "--json", action="store_true", help="write the full report as JSON"
-    )
+    preflight_parser.add_argument("--json", action="store_true", help="write the full report as JSON")
 
     verify_parser = commands.add_parser("verify", help="check package integrity and authenticity")
     _add_log_option(verify_parser)
     verify_parser.add_argument("transfer", type=Path, help="package directory or archive")
-    verify_parser.add_argument(
-        "--require-signature", action="store_true", help="reject packages without a signature"
-    )
+    verify_parser.add_argument("--require-signature", action="store_true", help="reject packages without a signature")
     verify_parser.add_argument(
         "--allow-unverified-signature",
         action="store_true",
@@ -122,12 +96,8 @@ def _parser() -> argparse.ArgumentParser:
     _add_log_option(restore_parser)
     restore_parser.add_argument("transfer", type=Path, help="package directory or archive")
     restore_parser.add_argument("destination", type=Path, help="new directory for restored files")
-    restore_parser.add_argument(
-        "--dry-run", action="store_true", help="verify without writing restored files"
-    )
-    restore_parser.add_argument(
-        "--require-signature", action="store_true", help="reject packages without a signature"
-    )
+    restore_parser.add_argument("--dry-run", action="store_true", help="verify without writing restored files")
+    restore_parser.add_argument("--require-signature", action="store_true", help="reject packages without a signature")
     restore_parser.add_argument(
         "--allow-unverified-signature",
         action="store_true",
@@ -139,9 +109,7 @@ def _parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("transfer", type=Path, help="package directory or archive")
     diff_parser.add_argument("source", type=Path, help="current source directory")
     diff_parser.add_argument("--json", action="store_true", help="write comparison results as JSON")
-    diff_parser.add_argument(
-        "--require-signature", action="store_true", help="reject packages without a signature"
-    )
+    diff_parser.add_argument("--require-signature", action="store_true", help="reject packages without a signature")
     diff_parser.add_argument(
         "--allow-unverified-signature",
         action="store_true",
@@ -163,9 +131,7 @@ def main(
     log = logging.getLogger("controlled_text_transfer")
     log.setLevel(logging.INFO)
     h = logging.StreamHandler()
-    h.setFormatter(
-        JsonFormatter() if args.log_json else logging.Formatter("%(levelname)s: %(message)s")
-    )
+    h.setFormatter(JsonFormatter() if args.log_json else logging.Formatter("%(levelname)s: %(message)s"))
     log.handlers[:] = [h]
     try:
         policy = Policy.from_file(args.policy)

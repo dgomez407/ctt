@@ -1,6 +1,6 @@
 # ADR-004: Use a small Python package with reproducible quality gates
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 

@@ -332,9 +332,7 @@ def _validate_output(output: Path) -> Path:
     repository = REPOSITORY.resolve()
     canonical = repository / "reports"
     if resolved.is_relative_to(repository) and resolved != canonical:
-        raise ReportError(
-            "report output inside the repository must be the top-level reports directory"
-        )
+        raise ReportError("report output inside the repository must be the top-level reports directory")
     _reject_linked_output(requested)
     return resolved
 
@@ -380,9 +378,7 @@ def _pydoc_breadcrumb(module_name: str) -> str:
 def _enhance_pydoc(page: str, module_name: str) -> str:
     section_names = re.findall(r'<strong class="bigsection">([^<]+)</strong>', page)
     for section_name in section_names:
-        section = (
-            f'<strong class="bigsection" id="{_section_id(section_name)}">{section_name}</strong>'
-        )
+        section = f'<strong class="bigsection" id="{_section_id(section_name)}">{section_name}</strong>'
         page = page.replace(f'<strong class="bigsection">{section_name}</strong>', section, 1)
 
     module_links = []
@@ -392,9 +388,7 @@ def _enhance_pydoc(page: str, module_name: str) -> str:
             "controlled_text_transfer", "package"
         )
         current = ' aria-current="page"' if documented_module == module_name else ""
-        module_links.append(
-            f'<li><a href="{html.escape(target)}"{current}>{html.escape(label)}</a></li>'
-        )
+        module_links.append(f'<li><a href="{html.escape(target)}"{current}>{html.escape(label)}</a></li>')
     section_links = "".join(
         f'<li><a href="#{_section_id(name)}">{html.escape(name)}</a></li>' for name in section_names
     )
@@ -488,10 +482,7 @@ def _validate_report_css(stylesheet: str) -> None:
 
     _, responsive_and_print = stylesheet.split(responsive_marker, 1)
     responsive, print_styles = responsive_and_print.split(print_marker, 1)
-    if (
-        ".pydoc-page .pydoc-layout { display: block; }" not in responsive
-        or "position: static;" not in responsive
-    ):
+    if ".pydoc-page .pydoc-layout { display: block; }" not in responsive or "position: static;" not in responsive:
         raise ValueError("report CSS must preserve the responsive pydoc layout")
     if (
         ".pydoc-page .pydoc-layout { display: block; }" not in print_styles
@@ -545,12 +536,9 @@ def _collect_metrics(output: Path) -> dict[str, str | int]:
     try:
         junit = (output / "junit.xml").read_text(encoding="utf-8")
         attribute_sets = (
-            dict(re.findall(r'(\w+)="([0-9.]+)"', match))
-            for match in re.findall(r"<testsuites?\b([^>]*)>", junit)
+            dict(re.findall(r'(\w+)="([0-9.]+)"', match)) for match in re.findall(r"<testsuites?\b([^>]*)>", junit)
         )
-        attributes = next(
-            (attributes for attributes in attribute_sets if "tests" in attributes), None
-        )
+        attributes = next((attributes for attributes in attribute_sets if "tests" in attributes), None)
         if attributes is None:
             return metrics
         metrics.update(
@@ -677,9 +665,7 @@ def generate(output: Path, *, pydoc_only: bool = False) -> int:
     metadata_text = json.dumps(metadata, indent=2) + "\n"
     (output / "metadata.json").write_text(metadata_text, encoding="utf-8")
     reports["runtime metadata"] = "metadata.json"
-    views["runtime metadata"] = _write_report_page(
-        output, "Runtime metadata", metadata_text, "metadata.json"
-    )
+    views["runtime metadata"] = _write_report_page(output, "Runtime metadata", metadata_text, "metadata.json")
 
     if not pydoc_only:
         python_exe = _python_executable()

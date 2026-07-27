@@ -36,6 +36,7 @@ Check Usage:
   - Black (formatting)
   - mypy (strict type checking)
   - Bandit (security scanning)
+  - PyMarkdown (markdown linting)
 
 Bootstrap Usage:
   bash scripts/run.sh bootstrap [output_path]
@@ -113,6 +114,7 @@ case "$command" in
         uv run --extra dev black --check .
         uv run --extra dev mypy src
         uv run --extra dev bandit -r src scripts -q
+        uv run --extra dev pymarkdown scan .
         ;;
     report)
         exec uv run --extra dev python scripts/report.py "$@"
@@ -173,12 +175,13 @@ init_path.write_text(new_content, encoding="utf-8")
         printf '==> Running check_release.py %s...\n' "$tag"
         uv run python scripts/check_release.py "$tag"
 
-        printf '==> Running quality gate (tests, Ruff, Black, mypy, Bandit)...\n'
+        printf '==> Running quality gate (tests, Ruff, Black, mypy, Bandit, PyMarkdown)...\n'
         uv run --extra dev pytest -q
         uv run --extra dev ruff check .
         uv run --extra dev black --check .
         uv run --extra dev mypy src
         uv run --extra dev bandit -r src scripts -q
+        uv run --extra dev pymarkdown scan .
 
         printf '==> Staging release files and creating commit/tag for %s...\n' "$tag"
         git add pyproject.toml README.md CHANGELOG.md src/controlled_text_transfer/__init__.py uv.lock

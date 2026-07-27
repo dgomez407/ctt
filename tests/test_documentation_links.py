@@ -80,9 +80,7 @@ def test_every_project_directory_has_a_bidirectionally_linked_readme():
     for directory in file_directories:
         project_directories.update([directory, *directory.parents])
     project_directories = {
-        directory
-        for directory in project_directories
-        if directory == Path(".") or not directory.is_absolute()
+        directory for directory in project_directories if directory == Path(".") or not directory.is_absolute()
     }
     root = Path(".")
     failures: list[str] = []
@@ -116,9 +114,7 @@ def test_documentation_and_its_directory_index_link_to_each_other():
         if document.name == "README.md":
             continue
         directory_readme = document.parent / "README.md"
-        if document.parent != Path(".") and directory_readme.resolve() not in _local_link_paths(
-            document
-        ):
+        if document.parent != Path(".") and directory_readme.resolve() not in _local_link_paths(document):
             failures.append(f"{document}: does not link to {directory_readme}")
         if document.resolve() not in _local_link_paths(directory_readme):
             failures.append(f"{directory_readme}: does not link to {document}")

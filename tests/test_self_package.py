@@ -78,9 +78,7 @@ def test_self_package_options_and_error_handling(tmp_path: Path):
         self_package(tmp_path / "invalid", package_format="invalid")
 
 
-def test_self_package_with_explicit_source_and_meipass(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-):
+def test_self_package_with_explicit_source_and_meipass(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     from controlled_text_transfer.core import _find_bootstrap_file
 
     # Test explicit source parameter
@@ -129,7 +127,5 @@ def test_find_bootstrap_file_none(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
 def test_self_package_rejects_non_standard_hash_algorithm(tmp_path: Path):
     invalid_policy = Policy(hash_algorithm="blake3")
-    with pytest.raises(
-        TransferError, match="self-package requires standard library hash algorithm"
-    ):
+    with pytest.raises(TransferError, match="self-package requires standard library hash algorithm"):
         self_package(tmp_path / "blake3_pkg.zip", policy=invalid_policy)

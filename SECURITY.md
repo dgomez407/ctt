@@ -32,7 +32,10 @@ must remain in approved key-management tooling. Do not put them in command
 arguments, environment variables, YAML, manifests, logs, or source files.
 External commands are passed as argument vectors with `shell=False`; do not
 replace this with shell-string execution. Secret-bearing flags are rejected in
-both `--flag value` and `--flag=value` forms.
+both `--flag value` and `--flag=value` forms. CTT drains stdout and stderr
+concurrently, retains no more than 256 KiB from either stream, and terminates a
+command as soon as either stream exceeds that ceiling. Signing reports a
+controlled failure; verification fails closed.
 
 ## File and archive safety
 
@@ -54,6 +57,19 @@ directory, self-verifies, and publishes by rename. This avoids ordinary partial
 packages; filesystem or host failure semantics still apply. Signature
 verifiers must be supplied through trusted operator configuration and must
 never be selected from transferred data.
+
+Security-sensitive reads use stable descriptors after rejecting links,
+junctions, and non-regular files and comparing pre-open, opened, and post-open
+identities. Archive ingestion streams observed bytes into staging under
+immutable receiver ceilings that transferred data cannot raise. Exact binary
+units, limits, compatibility effects, and test evidence are in the
+[security hardening contract](./docs/security-hardening.md).
+
+Identity-bearing manifests require an exact identity returned by the trusted
+verifier. `key_label` is informational only; integrity success does not prove
+authenticity. Legacy identity-free manifests may temporarily use boolean
+verification. `--allow-unverified-signature` remains an explicit residual risk
+and must not be treated as authorization to restore.
 
 Restoration uses a sibling staging directory, validates reconstructed and
 persisted bytes, applies validated modes, and publishes by rename. A failed
@@ -93,6 +109,18 @@ The separate event concurrency groups intentionally preserve both branch-tip
 and prospective-merge validation. PyPI publication remains isolated in its own
 job with environment-scoped OIDC permission, and a release tag is rejected
 unless its checked-out commit belongs to `origin/main`.
+
+The zero-dependency bootstrap applies bounded, stable reads to package directories
+and ZIP archives. It rejects links, duplicate or encrypted ZIP members, excessive
+expansion or compression, unsafe paths, multiple manifests, and signed packages it
+cannot authenticate. Signed packages must be restored with an installed, trusted CTT
+verifier.
+
+Python 3.12 support begins at 3.12.13, the current upstream security release.
+CI pins that minimum patch explicitly and also tests Python 3.14. Operators
+must update when a later security patch is released; Python 3.12 support will
+be reassessed by October 2027 and removed no later than its October 2028
+upstream end of life.
 
 ## Reporting
 

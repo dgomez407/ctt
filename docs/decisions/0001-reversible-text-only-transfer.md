@@ -1,6 +1,6 @@
 # ADR-001: Use reversible text-only transfer transformation
 
-[ADR index](README.md) | [Documentation index](../README.md)
+[ADR index](./README.md) | [Documentation index](../README.md)
 
 ## Status
 
