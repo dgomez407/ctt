@@ -181,7 +181,7 @@ init_path.write_text(new_content, encoding="utf-8")
         uv run --extra dev bandit -r src scripts -q
 
         printf '==> Staging release files and creating commit/tag for %s...\n' "$tag"
-        git add pyproject.toml README.md CHANGELOG.md
+        git add pyproject.toml README.md CHANGELOG.md src/controlled_text_transfer/__init__.py uv.lock
         git commit -m "chore(release): prepare $tag"
         git tag -a "$tag" -m "Release $tag"
 
