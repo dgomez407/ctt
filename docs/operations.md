@@ -122,12 +122,20 @@ Directory format publishes the requested directory. Archive formats publish
 only the corresponding archive after verifying its temporary canonical
 layout. Every artifact must still be scanned by surrounding controls.
 
+Receiver security ceilings are fixed and cannot be raised by policy or
+manifest data. The current limits are a 2 MiB manifest, 256 KiB signature,
+128 MiB archive input, 256 MiB expansion, 2,000 members, 10 MiB per member,
+100:1 compression ratio, 16 path components, and 180 path characters. Units
+are binary. Split larger transfers into independently verified packages; see
+the [security hardening contract](security-hardening.md).
+
 ## Failure handling
 
 - Do not rerun restore into an existing destination.
 - A failed restore removes staging and leaves the requested destination absent.
 - Preserve the failed package and manifest for investigation.
-- Treat checksum, traversal, unexpected-file, and signature failures as
+- Treat checksum, traversal, resource-limit, encryption, unexpected-file,
+  signature, and signer-identity failures as
   integrity failures, not as ordinary warnings.
 - Do not disable allowlists, size limits, or external scanning to force a
   transfer through.

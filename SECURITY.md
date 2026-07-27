@@ -55,6 +55,19 @@ packages; filesystem or host failure semantics still apply. Signature
 verifiers must be supplied through trusted operator configuration and must
 never be selected from transferred data.
 
+Security-sensitive reads use stable descriptors after rejecting links,
+junctions, and non-regular files and comparing pre-open, opened, and post-open
+identities. Archive ingestion streams observed bytes into staging under
+immutable receiver ceilings that transferred data cannot raise. Exact binary
+units, limits, compatibility effects, and test evidence are in the
+[security hardening contract](docs/security-hardening.md).
+
+Identity-bearing manifests require an exact identity returned by the trusted
+verifier. `key_label` is informational only; integrity success does not prove
+authenticity. Legacy identity-free manifests may temporarily use boolean
+verification. `--allow-unverified-signature` remains an explicit residual risk
+and must not be treated as authorization to restore.
+
 Restoration uses a sibling staging directory, validates reconstructed and
 persisted bytes, applies validated modes, and publishes by rename. A failed
 restore removes staging and leaves the requested destination absent.

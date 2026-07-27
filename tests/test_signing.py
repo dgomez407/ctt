@@ -7,6 +7,7 @@ import pytest
 from controlled_text_transfer.core import Policy, TransferError, prepare, verify
 from controlled_text_transfer.signing import (
     ExternalCommandSigner,
+    SignatureVerification,
     sign_manifest,
     verify_manifest_signature,
 )
@@ -20,6 +21,16 @@ class FakeSigner:
 
     def verify(self, data: bytes, signature: bytes) -> bool:
         return signature == b"signature:" + data
+
+
+class IdentitySigner(FakeSigner):
+    identity = "SHA256:approved-fingerprint"
+
+    def verify(self, data: bytes, signature: bytes) -> SignatureVerification:
+        return SignatureVerification(
+            signature == b"signature:" + data,
+            self.identity,
+        )
 
 
 def test_sign_and_verify_manifest_with_hook(tmp_path: Path):
@@ -172,6 +183,78 @@ def test_prepare_and_verify_enforce_integrated_manifest_signature(tmp_path: Path
         "key_label": "approved-key",
     }
     assert verify(package, signer=FakeSigner(), require_signature=True).files
+
+
+def test_identity_bearing_signature_requires_matching_authenticated_identity(tmp_path: Path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "safe.py").write_text("safe\n", encoding="utf-8")
+    package = tmp_path / "package"
+
+    manifest = prepare(source, package, Policy(), signer=IdentitySigner())
+
+    assert manifest.signature == {
+        "algorithm": "test-signature",
+        "key_label": "external-managed-key",
+        "identity": IdentitySigner.identity,
+    }
+    assert verify(package, signer=IdentitySigner(), require_signature=True).files
+
+    class WrongIdentitySigner(IdentitySigner):
+        identity = "SHA256:wrong-fingerprint"
+
+    with pytest.raises(TransferError, match="signer identity mismatch"):
+        verify(package, signer=WrongIdentitySigner(), require_signature=True)
+
+    with pytest.raises(TransferError, match="authenticated signer identity is required"):
+        verify(package, signer=FakeSigner(), require_signature=True)
+
+
+def test_structured_external_verifier_parses_authenticated_identity(monkeypatch):
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=b'{"valid":true,"identity":"SHA256:approved"}',
+            stderr=b"",
+        )
+
+    monkeypatch.setattr("controlled_text_transfer.signing.subprocess.run", fake_run)
+    signer = ExternalCommandSigner(
+        ["approved-sign"],
+        ["approved-verify"],
+        structured_verification=True,
+        identity="SHA256:approved",
+    )
+
+    assert signer.verify(b"manifest", b"signature") == SignatureVerification(
+        True,
+        "SHA256:approved",
+    )
+
+
+@pytest.mark.parametrize(
+    ("returncode", "stdout"),
+    [
+        (1, b'{"valid":true,"identity":"SHA256:approved"}'),
+        (0, b"not-json"),
+        (0, b'{"valid":true}'),
+        (0, b'{"valid":false,"identity":"SHA256:approved"}'),
+        (0, b'{"valid":true,"identity":""}'),
+    ],
+)
+def test_structured_external_verifier_fails_closed(monkeypatch, returncode: int, stdout: bytes):
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr=b"")
+
+    monkeypatch.setattr("controlled_text_transfer.signing.subprocess.run", fake_run)
+    signer = ExternalCommandSigner(
+        ["approved-sign"],
+        ["approved-verify"],
+        structured_verification=True,
+    )
+
+    assert signer.verify(b"manifest", b"signature") == SignatureVerification(False, None)
 
 
 def test_required_signature_fails_for_unsigned_or_tampered_packages(tmp_path: Path):

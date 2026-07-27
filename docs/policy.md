@@ -15,6 +15,13 @@ uv run ctt prepare SOURCE TRANSFER --policy POLICY.yaml --strict
 `verify` and `restore` validate a package from its manifest and do not accept
 `--policy`.
 
+Policy limits control sender-side selection and may be stricter than receiver
+limits. They cannot raise CTT's immutable verifier ceilings. For example,
+`max_files: 10000` does not permit a manifest or archive to exceed the
+receiver's 2,000-record/member ceilings. See the
+[security hardening contract](security-hardening.md) for exact binary-unit
+limits. Split oversized transfers into separately verified packages.
+
 ## Fields
 
 | Field | Valid value and meaning | Default |

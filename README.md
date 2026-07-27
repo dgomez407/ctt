@@ -170,6 +170,14 @@ See the [policy reference and examples](docs/policy.md) for full configuration d
 - **Atomic Restoration**: Destinations are staged and validated before publication to prevent partial writes.
 - **Traversal Prevention**: Every manifest path is verified against a link-free package root.
 - **Digital Signatures**: Detached signature hooks in `controlled_text_transfer.signing` integrate with host GPG/X.509 infrastructure. `ctt` fails closed if a signature is missing when `--require-signature` is specified.
+- **Bounded Ingestion**: Immutable receiver ceilings bound manifests, signatures,
+  archives, expansion, members, paths, and individual files. Security-sensitive
+  reads use stable descriptors and archive extraction streams observed bytes.
+- **Authenticated Signer Identity**: Identity-bearing manifests require an exact
+  identity returned by the trusted verifier; `key_label` is informational only.
+
+See the [security hardening contract](docs/security-hardening.md) for exact
+binary-unit ceilings, compatibility rules, residual risks, and test evidence.
 
 See [SECURITY.md](SECURITY.md) for detailed security guidance.
 

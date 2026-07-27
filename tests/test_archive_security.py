@@ -187,6 +187,58 @@ def test_verify_rejects_zip_expansion_over_limit(tmp_path: Path, monkeypatch: py
         verify(archive)
 
 
+def test_verify_rejects_archive_input_over_security_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    archive = tmp_path / "large.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("payload/file.txt", b"x")
+    monkeypatch.setattr(core, "MAX_ARCHIVE_INPUT_BYTES", archive.stat().st_size - 1)
+
+    with pytest.raises(TransferError, match="archive input exceeds security limit"):
+        verify(archive)
+
+
+def test_verify_rejects_member_over_individual_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    archive = tmp_path / "large.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("payload/file.txt", b"xx")
+    monkeypatch.setattr(core, "MAX_ARCHIVE_MEMBER_BYTES", 1)
+
+    with pytest.raises(TransferError, match="archive member size limit exceeded"):
+        verify(archive)
+
+
+def test_verify_rejects_encrypted_zip_member_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    archive = tmp_path / "encrypted.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("payload/file.txt", b"x")
+    original_infolist = zipfile.ZipFile.infolist
+
+    def encrypted_infolist(self):
+        members = original_infolist(self)
+        members[0].flag_bits |= 0x1
+        return members
+
+    monkeypatch.setattr(zipfile.ZipFile, "infolist", encrypted_infolist)
+    with pytest.raises(TransferError, match="encrypted archive member"):
+        verify(archive)
+
+
+def test_verify_rejects_excessive_zip_compression_ratio(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    archive = tmp_path / "ratio.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as output:
+        output.writestr("payload/file.txt", b"x" * 100)
+    monkeypatch.setattr(core, "MAX_COMPRESSION_RATIO", 1)
+
+    with pytest.raises(TransferError, match="compression ratio limit exceeded"):
+        verify(archive)
+
+
 @pytest.mark.parametrize("kind", ["zip", "tar"])
 def test_verify_rejects_archives_over_member_limit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str

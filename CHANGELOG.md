@@ -4,17 +4,29 @@
 
 ### Added
 
-- Dynamic Codecov coverage badge in `README.md` and automated coverage upload step in `.github/workflows/ci.yml`.
+- Structured signature verification with authenticated signer identities.
+- ADR-014, a complete security hardening contract, and a deferred security backlog.
+- Dynamic Codecov coverage badge in `README.md` and automated coverage
+  upload step in `.github/workflows/ci.yml`.
 - GitHub repository link and PyPI monthly download status badges in `README.md`.
-- Repository `.git-blame-ignore-revs` configuration file to ignore bulk code formatting and line-ending normalization commits during `git blame` inspection.
+- Repository `.git-blame-ignore-revs` configuration file to ignore bulk code formatting
+  and line-ending normalization commits during `git blame` inspection.
 
 ### Changed
+
+- Security-sensitive reads now use stable descriptors, and archive ingestion
+  streams observed bytes under immutable conservative CDS ceilings.
 
 ### Fixed
 
 ### Security
 
-- Option injection guards and positional argument separators in `scripts/ctt-release-check.sh` and `scripts/check_release.py`.
+- Bound manifests, signatures, archive input and expansion, members, individual
+  files, compression ratios, and paths independently of transferred policy.
+- Reject encrypted ZIP members, dishonest observed sizes, unstable file
+  identities, and mismatched authenticated signer identities.
+- Option injection guards and positional argument separators
+  in `scripts/ctt-release-check.sh` and `scripts/check_release.py`.
 
 ## [0.2.0] - 2026-07-26
 

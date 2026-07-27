@@ -22,3 +22,4 @@ recorded in a new ADR that references the earlier one.
 | [ADR-011](0011-fail-closed-ingestion-and-atomic-restoration.md) | Fail closed at package boundaries and restore atomically | Accepted |
 | [ADR-012](0012-harden-github-automation.md) | Harden GitHub automation and release provenance | Accepted |
 | [ADR-013](0013-release-alignment-and-rollback-operations.md) | Automate release alignment, verification, and unrelease operations | Accepted |
+| [ADR-014](0014-stable-bounded-authenticated-ingestion.md) | Use stable, bounded, authenticated package ingestion | Accepted |

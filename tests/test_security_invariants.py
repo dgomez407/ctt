@@ -336,14 +336,14 @@ def test_restore_rejects_staged_checksum_mismatch_and_cleans_output(
 ):
     package = _prepare_one_file(tmp_path)
     destination = tmp_path / "restored"
-    original_read_bytes = Path.read_bytes
+    original_stable_read = core._read_stable_file
 
-    def corrupt_staged_read(path: Path) -> bytes:
+    def corrupt_staged_read(path: Path, maximum: int, label: str) -> bytes:
         if any(part.startswith(".restored-") for part in path.parts):
             return b"corrupted after write"
-        return original_read_bytes(path)
+        return original_stable_read(path, maximum, label)
 
-    monkeypatch.setattr(Path, "read_bytes", corrupt_staged_read)
+    monkeypatch.setattr(core, "_read_stable_file", corrupt_staged_read)
 
     with pytest.raises(TransferError, match="staged checksum mismatch"):
         restore(package, destination)
@@ -400,20 +400,80 @@ def test_prepare_detects_source_changes_during_capture(
     source_file = source / "safe.py"
     source_file.write_text("before\n", encoding="utf-8")
     package = tmp_path / "package"
-    original_read_bytes = Path.read_bytes
+    original_stable_read = core._read_stable_file
 
-    def read_and_modify(path: Path) -> bytes:
-        data = original_read_bytes(path)
+    def read_and_modify(path: Path, maximum: int, label: str) -> bytes:
+        data = original_stable_read(path, maximum, label)
         if path == source_file:
             path.write_text("after and a different size\n", encoding="utf-8")
         return data
 
-    monkeypatch.setattr(Path, "read_bytes", read_and_modify)
+    monkeypatch.setattr(core, "_read_stable_file", read_and_modify)
 
     with pytest.raises(TransferError, match="source changed during preparation"):
         prepare(source, package, Policy())
-
     assert not package.exists()
+
+
+def test_manifest_read_rejects_file_over_byte_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    manifest = tmp_path / "manifest.json.txt"
+    manifest.write_text("{} ", encoding="utf-8")
+    monkeypatch.setattr(core, "MAX_MANIFEST_BYTES", 1)
+
+    with pytest.raises(TransferError, match="manifest exceeds the security limit"):
+        Manifest.read(manifest)
+
+
+def test_manifest_rejects_record_count_over_security_limit(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(core, "MAX_ARCHIVE_MEMBERS", 0)
+
+    with pytest.raises(TransferError, match="file count exceeds security limit"):
+        Manifest.from_dict({"format_version": 1, "hash_algorithm": "sha256", "files": [{}]})
+
+
+def test_manifest_rejects_malformed_signature_identity():
+    with pytest.raises(TransferError, match="invalid manifest signer identity"):
+        Manifest.from_dict(
+            {
+                "format_version": 1,
+                "hash_algorithm": "sha256",
+                "files": [],
+                "signature": {
+                    "algorithm": "test",
+                    "key_label": "informational",
+                    "identity": "",
+                },
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("original_path", "a/" * 16 + "x", "depth"),
+        ("original_path", "x" * 181, "length"),
+    ],
+)
+def test_manifest_rejects_paths_over_security_limits(field: str, value: str, message: str):
+    record = {
+        "original_path": "safe.py",
+        "transfer_path": "payload/safe.py.txt",
+        "original_hash": "0" * 64,
+        "transfer_hash": "0" * 64,
+        "original_size": 1,
+        "transfer_size": 1,
+        "bom_added": False,
+        "original_bom": False,
+        "mode": 0o644,
+    }
+    record[field] = value
+
+    with pytest.raises(TransferError, match=f"path exceeds security {message} limit"):
+        Manifest.from_dict({"format_version": 1, "hash_algorithm": "sha256", "files": [record]})
 
 
 def test_prepare_cleans_staging_output_when_manifest_write_fails(

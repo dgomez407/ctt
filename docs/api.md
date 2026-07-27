@@ -43,11 +43,24 @@ The public core functions are available from `controlled_text_transfer.core`:
 
 Signing integration is available from `controlled_text_transfer.signing`:
 
-- `ManifestSigner` defines `sign` and `verify` behavior.
+- `SignatureVerification(valid, identity)` reports validity and the identity
+  authenticated by the trusted verifier.
+- `ManifestSigner` defines `sign` and transitional
+  `verify -> bool | SignatureVerification` behavior.
 - `sign_manifest` writes a detached signature sidecar.
 - `verify_manifest_signature` validates a detached signature.
 - `ExternalCommandSigner` calls approved tools with safe argument vectors.
 
+Set `structured_verification=True` for an external verifier that emits bounded
+UTF-8 JSON shaped exactly as
+`{"valid": true, "identity": "SHA256:approved-fingerprint"}`. New manifests
+created with a signer exposing `identity` require a matching structured result.
+Legacy manifests without identity may use boolean verification. `key_label`
+never authorizes a signer.
+
 These signing hooks intentionally do not manage private keys or passphrases.
 CLI embedding may inject a trusted `ManifestSigner` into `main`; transferred
 manifests and policy files never select executable commands.
+All APIs enforce the immutable limits in the
+[security hardening contract](security-hardening.md); violations raise
+`TransferError` (or `ValueError`/`RuntimeError` at the low-level signer adapter).

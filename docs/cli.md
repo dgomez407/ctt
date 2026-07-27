@@ -106,3 +106,11 @@ uv run ctt diff ./transfer ./source --policy ./ctt.yaml --json
 
 All commands return `0` on success and `2` for operational or validation errors.
 See [Policy configuration](policy.md) for every policy field and more examples.
+
+Verification and restoration also return `2` for immutable security-ceiling,
+archive-encryption, compression-ratio, unstable-file, and signer-identity
+failures. Directory and archive packages receive equivalent manifest,
+signature, payload-size, and path validation. See the
+[security hardening contract](security-hardening.md). The
+`--allow-unverified-signature` option remains an explicit integrity-only
+residual risk and does not establish signer authenticity.
