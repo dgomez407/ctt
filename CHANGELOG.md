@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+### Changed
+### Fixed
+### Security
+
+## [0.2.0] - 2026-07-26
 
 ### Added
 

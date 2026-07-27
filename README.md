@@ -1,4 +1,4 @@
-# Controlled Text Transfer 0.1.0
+# Controlled Text Transfer 0.2.0
 
 [![PyPI Version](https://img.shields.io/pypi/v/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
 [![PyPI License](https://img.shields.io/pypi/l/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
