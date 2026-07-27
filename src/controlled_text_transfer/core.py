@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 import stat
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -54,7 +55,7 @@ DEFAULT_NAMES = {
     ".gitattributes",
     ".editorconfig",
 }
-PACKAGE_SUFFIXES = {"zip": ".zip", "tar": ".tar", "tar.gz": ".tar.gz"}
+PACKAGE_SUFFIXES = {"zip": ".zip", "tar": ".tar", "tgz": ".tgz"}
 PACKAGE_FORMATS = {"directory", *PACKAGE_SUFFIXES}
 APPROVED_HASH_ALGORITHMS = frozenset({"sha256", "sha512", "blake3"})
 APPROVED_HASH_LENGTHS = frozenset({64, 128})
@@ -491,10 +492,30 @@ def _ignored(rel: str, patterns: Iterable[str]) -> bool:
     )
 
 
+DEFAULT_IGNORE_PATTERNS = [
+    ".git/*",
+    ".venv/*",
+    "*__pycache__/*",
+    "*.py[cod]",
+    ".pytest_cache/*",
+    ".mypy_cache/*",
+    ".ruff_cache/*",
+    ".coverage",
+    "dist/*",
+    "build/*",
+    "reports/*",
+    "*.egg-info/*",
+]
+
+
 def _read_patterns(source: Path, filename: str) -> list[str]:
     path = source / filename
     if not path.is_file():
-        return []
+        example_path = source / f"{filename}.example"
+        if example_path.is_file():
+            path = example_path
+        else:
+            return list(DEFAULT_IGNORE_PATTERNS)
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
 
 
@@ -527,6 +548,17 @@ def _content_reasons(text: str, policy: Policy, profile: CDSProfile) -> list[str
     return reasons
 
 
+def _rejected_decision(rel: str, reasons: list[str]) -> PreflightDecision:
+    return PreflightDecision(
+        path=rel,
+        transfer_path=(Path("payload") / (rel + ".txt")).as_posix(),
+        status="rejected",
+        reasons=reasons,
+        size=0,
+        transformations=[],
+    )
+
+
 def _scan_source(
     source: Path, policy: Policy
 ) -> tuple[PreflightReport, dict[str, bytes], dict[str, int]]:
@@ -545,10 +577,22 @@ def _scan_source(
         path for path in source.rglob("*") if path.is_file() and path.name != policy.ignore_file
     )
     for path in paths:
-        rel = _safe_relative(source, path).as_posix()
+        if _is_link(path):
+            rel = path.relative_to(source).as_posix()
+            reasons = ["ignored"] if _ignored(rel, patterns) else ["symlink_not_allowed"]
+            decisions.append(_rejected_decision(rel, reasons))
+            continue
+        try:
+            rel_path = _safe_relative(source, path)
+        except TransferError:
+            rel = path.relative_to(source).as_posix()
+            reasons = ["ignored"] if _ignored(rel, patterns) else ["path_escapes_root"]
+            decisions.append(_rejected_decision(rel, reasons))
+            continue
+        rel = rel_path.as_posix()
         before = path.stat()
         size = before.st_size
-        reasons: list[str] = []
+        reasons = []
         if _ignored(rel, patterns):
             reasons.append("ignored")
         if size > policy.max_bytes:
@@ -625,6 +669,31 @@ def preflight(source: Path, policy: Policy) -> PreflightReport:
     return report
 
 
+KNOWN_ARCHIVE_SUFFIXES: tuple[str, ...] = (".tar.gz", ".tgz", ".zip", ".tar")
+
+
+def _clean_archive_root_name(path: Path) -> str:
+    name = path.name
+    for suffix in KNOWN_ARCHIVE_SUFFIXES:
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+def _resolve_package_destination(destination: Path, fmt: str) -> Path:
+    if fmt not in PACKAGE_SUFFIXES:
+        return destination
+    target_suffix = PACKAGE_SUFFIXES[fmt]
+    dest_str = str(destination)
+    if dest_str.endswith(target_suffix):
+        return destination
+    for old_suffix in KNOWN_ARCHIVE_SUFFIXES:
+        if dest_str.endswith(old_suffix):
+            dest_str = dest_str[: -len(old_suffix)]
+            break
+    return Path(dest_str + target_suffix)
+
+
 def _package(
     transfer: Path,
     fmt: str,
@@ -635,16 +704,16 @@ def _package(
     _validate_package_format(fmt)
     if fmt == "directory":
         return transfer
-    suffix = PACKAGE_SUFFIXES[fmt]
-    archive = archive or transfer.with_suffix(suffix)
+    archive = archive or _resolve_package_destination(transfer, fmt)
     if fmt == "zip":
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
             for p in transfer.rglob("*"):
                 if p.is_file():
                     zf.write(p, p.relative_to(transfer))
-    elif fmt in {"tar", "tar.gz"}:
-        with tarfile.open(archive, "w:gz" if fmt == "tar.gz" else "w") as tf:
-            tf.add(transfer, arcname=root_name or transfer.name)
+    elif fmt in {"tar", "tgz"}:
+        arc_root = root_name or _clean_archive_root_name(archive or transfer)
+        with tarfile.open(archive, "w:gz" if fmt == "tgz" else "w") as tf:
+            tf.add(transfer, arcname=arc_root)
     return archive
 
 
@@ -811,6 +880,7 @@ def prepare(
     signer: Optional[ManifestSigner] = None,
     key_label: str = "external-managed-key",
     logger: Optional[logging.Logger] = None,
+    is_self_package: bool = False,
 ) -> Manifest:
     """Create one staged, self-verified transfer artifact.
 
@@ -866,7 +936,7 @@ def prepare(
         if transfer.exists():
             raise FileExistsError(transfer)
         final_archive = (
-            transfer.with_suffix(PACKAGE_SUFFIXES[policy.package_format])
+            _resolve_package_destination(transfer, policy.package_format)
             if policy.package_format != "directory"
             else None
         )
@@ -886,6 +956,10 @@ def prepare(
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 dst.write_bytes(captured[rec.original_path])
             manifest.write(stage / "ctt-manifest.json.txt")
+            if is_self_package:
+                bootstrap_file = _find_bootstrap_file(source)
+                if bootstrap_file is not None and bootstrap_file.is_file():
+                    (stage / "bootstrap.py.txt").write_bytes(bootstrap_file.read_bytes())
             if signer is not None:
                 sign_manifest(
                     stage / "ctt-manifest.json.txt",
@@ -904,7 +978,7 @@ def prepare(
                     stage,
                     policy.package_format,
                     archive=stage_archive,
-                    root_name=transfer.name,
+                    root_name=_clean_archive_root_name(transfer),
                 )
             if final_archive is None:
                 stage.replace(transfer)
@@ -1144,3 +1218,71 @@ def restore(
     if logger:
         logger.info("restore_complete", extra={"files": len(manifest.files), "dry_run": dry_run})
     return manifest
+
+
+def _find_bootstrap_file(pkg_root: Path) -> Optional[Path]:
+    candidates = [
+        Path(__file__).resolve().parent / "bootstrap.py",
+        pkg_root / "src" / "controlled_text_transfer" / "bootstrap.py",
+    ]
+    mei_pass = getattr(sys, "_MEIPASS", None)
+    if mei_pass:
+        candidates.insert(0, Path(mei_pass) / "controlled_text_transfer" / "bootstrap.py")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _resolve_self_package_root(source: Optional[Path]) -> Path:
+    if source is not None:
+        return source.resolve()
+    cwd = Path.cwd().resolve()
+    if (cwd / "pyproject.toml").is_file() or (cwd / "src" / "controlled_text_transfer").is_dir():
+        return cwd
+    p2 = Path(__file__).resolve().parents[2]
+    if (p2 / "pyproject.toml").is_file():
+        return p2
+    return cwd
+
+
+def self_package(
+    destination: Path,
+    source: Optional[Path] = None,
+    *,
+    package_format: str = "zip",
+    policy: Optional[Policy] = None,
+    signer: Optional[ManifestSigner] = None,
+    dry_run: bool = False,
+    logger: Optional[logging.Logger] = None,
+) -> tuple[Manifest, Path]:
+    """Package the CTT codebase into a .txt-only self-bootstrapping transfer bundle."""
+    if policy is None:
+        policy = Policy(package_format=package_format)
+    else:
+        policy.package_format = package_format
+
+    if policy.hash_algorithm not in {"sha256", "sha512"}:
+        raise TransferError(
+            f"self-package requires standard library hash algorithm ('sha256' or 'sha512'), "
+            f"got: {policy.hash_algorithm}"
+        )
+
+    pkg_root = _resolve_self_package_root(source)
+
+    if package_format in PACKAGE_SUFFIXES:
+        destination = _resolve_package_destination(destination, package_format)
+    elif package_format != "directory":
+        raise TransferError(f"unsupported package format: {package_format}")
+
+    manifest = prepare(
+        pkg_root,
+        destination,
+        policy,
+        dry_run=dry_run,
+        strict=False,
+        signer=signer,
+        logger=logger,
+        is_self_package=True,
+    )
+    return manifest, destination

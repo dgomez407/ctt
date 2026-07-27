@@ -24,6 +24,22 @@ def _bash() -> str:
     return bash
 
 
+def test_run_script_no_args_lists_concise_commands():
+    result = subprocess.run(
+        [_bash(), "scripts/run.sh"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("Usage: bash scripts/run.sh COMMAND [ARGS...]\n")
+    assert "Check Usage:" not in result.stdout
+    assert "Bootstrap Usage:" not in result.stdout
+    assert "Release Usage:" not in result.stdout
+    assert "Unrelease Usage:" not in result.stdout
+
+
 def test_run_script_help_lists_supported_commands():
     result = subprocess.run(
         [_bash(), "scripts/run.sh", "help"],
@@ -34,8 +50,45 @@ def test_run_script_help_lists_supported_commands():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("Usage: bash scripts/run.sh COMMAND [ARGS...]\n")
-    for command in ("setup", "test", "check", "report", "build", "clean"):
+    assert "Check Usage:" in result.stdout
+    assert "Bootstrap Usage:" in result.stdout
+    assert "Release Usage:" in result.stdout
+    assert "Unrelease Usage:" in result.stdout
+    for command in (
+        "setup",
+        "test",
+        "check",
+        "report",
+        "build",
+        "bootstrap",
+        "release",
+        "unrelease",
+        "clean",
+    ):
         assert command in result.stdout
+
+
+def test_run_script_bootstrap_subcommand(tmp_path: Path):
+    target = tmp_path / "bootstrap_bundle.zip"
+    result = subprocess.run(
+        [_bash(), "scripts/run.sh", "bootstrap", str(target)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert target.is_file()
+
+
+def test_run_script_bootstrap_rejects_extra_args():
+    result = subprocess.run(
+        [_bash(), "scripts/run.sh", "bootstrap", "path1", "path2"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "bootstrap accepts at most one output_path argument" in result.stderr
 
 
 def test_run_script_rejects_unknown_commands():

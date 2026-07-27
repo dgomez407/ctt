@@ -18,7 +18,7 @@ allowlist:
 add_bom: false
 hash_algorithm: sha512
 max_bytes: 42
-package_format: tar.gz
+package_format: tgz
 ignore_file: .transferignore
 profile: generic-text-v1
 max_total_bytes: 84
@@ -41,7 +41,7 @@ prohibited_patterns: ["PRIVATE"]
     assert policy.add_bom is False
     assert policy.hash_algorithm == "sha512"
     assert policy.max_bytes == 42
-    assert policy.package_format == "tar.gz"
+    assert policy.package_format == "tgz"
     assert policy.ignore_file == ".transferignore"
     assert policy.profile == "generic-text-v1"
     assert policy.max_total_bytes == 84

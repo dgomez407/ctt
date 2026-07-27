@@ -1,8 +1,12 @@
 # Controlled Text Transfer Quick Start
 
-Run these commands from the repository root. `uv` creates and manages the
-Python 3.12-or-newer environment automatically; no separate installation is
-required.
+Install official packages directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
+```bash
+pip install controlled-text-transfer
+```
+
+For development, `uv` creates and manages the Python 3.12-or-newer environment automatically from the repository root:
 
 ## Show the CLI
 
@@ -33,8 +37,8 @@ uv run ctt prepare ./source ./transfer --policy ./ctt.yaml --strict
 ```
 
 The default `directory` package format creates `./transfer`. ZIP, TAR, and
-TAR.GZ policies instead create `./transfer.zip`, `./transfer.tar`, or
-`./transfer.tar.gz`.
+TGZ policies instead create `./transfer.zip`, `./transfer.tar`, or
+`./transfer.tgz`.
 
 For all options:
 
@@ -96,6 +100,9 @@ Other dispatcher commands are:
 bash scripts/run.sh setup
 bash scripts/run.sh report
 bash scripts/run.sh build
+bash scripts/run.sh bootstrap dist/ctt-bootstrap.zip
+bash scripts/run.sh release 0.1.1
+bash scripts/run.sh unrelease 0.1.1
 bash scripts/run.sh clean --dry-run
 bash scripts/run.sh clean --environment
 bash scripts/run.sh help

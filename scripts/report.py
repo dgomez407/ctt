@@ -644,6 +644,20 @@ def _write_index(output: Path, summary: dict[str, Any]) -> None:
     )
 
 
+def _python_executable() -> str:
+    venv_dir = (REPOSITORY / ".venv").resolve()
+    current_exe = Path(sys.executable).resolve()
+    if current_exe == venv_dir or venv_dir in current_exe.parents:
+        return sys.executable
+    win_py = REPOSITORY / ".venv" / "Scripts" / "python.exe"
+    if win_py.is_file():
+        return str(win_py)
+    posix_py = REPOSITORY / ".venv" / "bin" / "python"
+    if posix_py.is_file():
+        return str(posix_py)
+    return sys.executable
+
+
 def generate(output: Path, *, pydoc_only: bool = False) -> int:
     """Generate reports and return zero only when every requested check passes."""
     output = _validate_output(output)
@@ -668,10 +682,11 @@ def generate(output: Path, *, pydoc_only: bool = False) -> int:
     )
 
     if not pydoc_only:
+        python_exe = _python_executable()
         coverage = output / "coverage"
         checks["tests and coverage"] = _run(
             [
-                sys.executable,
+                python_exe,
                 "-m",
                 "pytest",
                 "-q",
@@ -698,7 +713,7 @@ def generate(output: Path, *, pydoc_only: bool = False) -> int:
             "pytest.txt",
         )
         checks["ruff"] = _run(
-            [sys.executable, "-m", "ruff", "check", ".", "--output-format", "json"],
+            [python_exe, "-m", "ruff", "check", ".", "--output-format", "json"],
             output / "ruff.json",
         )
         reports["Ruff findings"] = "ruff.json"
@@ -709,7 +724,7 @@ def generate(output: Path, *, pydoc_only: bool = False) -> int:
             "ruff.json",
         )
         checks["black"] = _run(
-            [sys.executable, "-m", "black", "--check", "."],
+            [python_exe, "-m", "black", "--check", "."],
             output / "black.txt",
         )
         reports["Black output"] = "black.txt"
@@ -720,7 +735,7 @@ def generate(output: Path, *, pydoc_only: bool = False) -> int:
             "black.txt",
         )
         checks["mypy"] = _run(
-            [sys.executable, "-m", "mypy", "src"],
+            [python_exe, "-m", "mypy", "src"],
             output / "mypy.txt",
         )
         reports["MyPy output"] = "mypy.txt"
@@ -731,7 +746,7 @@ def generate(output: Path, *, pydoc_only: bool = False) -> int:
             "mypy.txt",
         )
         checks["bandit"] = _run(
-            [sys.executable, "-m", "bandit", "-r", "src", "scripts", "-q", "-f", "json"],
+            [python_exe, "-m", "bandit", "-r", "src", "scripts", "-q", "-f", "json"],
             output / "bandit.json",
         )
         reports["Bandit findings"] = "bandit.json"

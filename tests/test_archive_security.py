@@ -12,7 +12,7 @@ from controlled_text_transfer.core import Policy, TransferError, prepare, restor
 
 @pytest.mark.parametrize(
     ("package_format", "suffix"),
-    [("zip", ".zip"), ("tar", ".tar"), ("tar.gz", ".tar.gz")],
+    [("zip", ".zip"), ("tar", ".tar"), ("tgz", ".tgz")],
 )
 def test_verify_and_restore_accept_archives_directly(
     tmp_path: Path, package_format: str, suffix: str
@@ -33,7 +33,7 @@ def test_verify_and_restore_accept_archives_directly(
     assert (destination / "safe.py").read_text(encoding="utf-8") == "safe\n"
 
 
-def test_tar_gz_with_sha512_verifies_and_restores_original_bytes(tmp_path: Path):
+def test_tgz_with_sha512_verifies_and_restores_original_bytes(tmp_path: Path):
     source = tmp_path / "source"
     source.mkdir()
     original = b"sha512 archive round trip\n"
@@ -43,9 +43,9 @@ def test_tar_gz_with_sha512_verifies_and_restores_original_bytes(tmp_path: Path)
     prepared = prepare(
         source,
         package,
-        Policy(package_format="tar.gz", hash_algorithm="sha512"),
+        Policy(package_format="tgz", hash_algorithm="sha512"),
     )
-    archive = package.with_suffix(".tar.gz")
+    archive = package.with_suffix(".tgz")
     verified = verify(archive)
     destination = tmp_path / "restored"
     restored = restore(archive, destination)

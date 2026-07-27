@@ -1,5 +1,14 @@
 # Controlled Text Transfer 0.1.0
 
+[![PyPI Version](https://img.shields.io/pypi/v/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
+[![PyPI License](https://img.shields.io/pypi/l/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/controlled-text-transfer)](https://pypi.org/project/controlled-text-transfer/)
+[![CI](https://img.shields.io/github/actions/workflow/status/dgomez407/ctt/ci.yml?branch=main&label=CI)](https://github.com/dgomez407/ctt/actions)
+[![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/types-Mypy%20Strict-blue)](https://mypy-lang.org/)
+[![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+
 Controlled Text Transfer (`ctt`) prepares an allowlisted set of text files for
 a controlled transfer that accepts only `.txt` names. It appends `.txt`,
 preserves content and paths in a signed-ready JSON manifest, adds an optional
@@ -43,8 +52,13 @@ dependencies.
 
 ## Quick start
 
+Install official releases directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
 ```bash
+pip install controlled-text-transfer
+# Or install from source:
 python -m pip install .
+
 ctt prepare ./source ./transfer --policy ctt.yaml
 ctt preflight ./source --policy ctt.yaml --json
 ctt verify ./transfer
@@ -58,15 +72,19 @@ ctt diff ./transfer ./source --json
 |---|---|
 | `uv run ctt preflight SOURCE --json` | Produce a read-only compatibility report |
 | `uv run ctt prepare SOURCE TRANSFER --strict` | Build only when every candidate passes |
+| `uv run ctt self-package DESTINATION` | Build .txt-only self-bootstrapping CTT transfer bundle |
 | `uv run ctt verify TRANSFER` | Verify a directory or supported archive |
 | `uv run ctt restore TRANSFER DESTINATION` | Restore verified original files |
 | `uv run --extra dev pytest` | Install missing development tools and run all tests |
 | `bash scripts/run.sh check` | Run the complete local quality gate |
 | `bash scripts/run.sh report` | Generate browsable API, coverage, quality, and security reports |
+| `bash scripts/run.sh bootstrap [PATH]` | Package CTT into a .txt-only self-bootstrapping bundle |
+| `bash scripts/run.sh release VERSION` | Align version metadata, verify quality, commit, and tag release |
+| `bash scripts/run.sh unrelease VERSION` | Remove local tag and reset release commit for a version |
 
 Use `--dry-run` with `prepare` or `restore` to inspect the operation without
 writing. Use `--log-json` for machine-readable audit events. Directory format
-publishes the requested directory; `zip`, `tar`, and `tar.gz` publish only the
+publishes the requested directory; `zip`, `tar`, and `tgz` publish only the
 corresponding archive.
 
 Use `prepare --strict --json-report preflight.json` to publish nothing when a

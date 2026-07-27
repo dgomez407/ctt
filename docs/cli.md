@@ -12,6 +12,7 @@ where it changes behavior:
 | Command | Supported options |
 | --- | --- |
 | `prepare` | `--policy`, `--log-json`, `--dry-run`, `--strict`, `--json-report`, `--sign`, `--key-label` |
+| `self-package` | `--policy`, `--log-json`, `--source`, `--format`, `--dry-run` |
 | `preflight` | `--policy`, `--json` |
 | `verify` | `--log-json`, `--require-signature`, `--allow-unverified-signature` |
 | `restore` | `--log-json`, `--dry-run`, `--require-signature`, `--allow-unverified-signature` |
@@ -38,6 +39,24 @@ example, `verify` and `restore` do not accept `--policy`, while `preflight` and
 
 ```console
 uv run ctt prepare ./source ./transfer --policy ./ctt.yaml --strict --json-report ./preflight.json
+```
+
+## `self-package`
+
+`uv run ctt self-package DESTINATION [OPTIONS]` packages the `ctt` codebase into a
+`.txt`-only self-bootstrapping transfer bundle containing an embedded zero-dependency
+`bootstrap.py.txt` script.
+
+| Option | How and why to use it |
+| --- | --- |
+| `--policy PATH` | Apply a YAML compatibility/content policy. Example: `--policy ctt.yaml`. |
+| `--source PATH` | Select source directory to package (default: current directory). |
+| `--format FORMAT` | Select package output format (`zip`, `directory`, `tar`, `tgz`). Default: `zip`. |
+| `--dry-run` | Check what can be packaged without creating output. |
+| `--log-json` | Emit the completion audit event as JSON on stderr. |
+
+```console
+uv run ctt self-package ./dist/ctt-bootstrap.zip --format zip
 ```
 
 ## `preflight`

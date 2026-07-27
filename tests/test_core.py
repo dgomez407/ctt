@@ -88,8 +88,20 @@ def test_tar_and_tar_gz_use_correct_archive_suffixes(tmp_path: Path):
     assert tar_package.with_suffix(".tar").is_file()
 
     gz_package = tmp_path / "gz-package"
-    prepare(source, gz_package, Policy(package_format="tar.gz"))
-    assert gz_package.with_suffix(".tar.gz").is_file()
+    prepare(source, gz_package, Policy(package_format="tgz"))
+    assert gz_package.with_suffix(".tgz").is_file()
+
+
+def test_package_invalid_format(tmp_path: Path):
+    from controlled_text_transfer.core import (
+        TransferError,
+        _package,
+        _resolve_package_destination,
+    )
+
+    assert _resolve_package_destination(tmp_path / "mydir", "directory") == tmp_path / "mydir"
+    with pytest.raises(TransferError, match="unsupported package format"):
+        _package(tmp_path, "invalid")
 
 
 def test_sha512_and_original_bom(tmp_path: Path):
@@ -161,3 +173,89 @@ def test_cli_json_logging_contains_audit_timestamp(tmp_path: Path, capsys):
     log_line = capsys.readouterr().err.strip().splitlines()[-1]
     assert '"event": "prepare_complete"' in log_line
     assert '"timestamp":' in log_line
+
+
+def test_scan_source_handles_symlinks_and_escaping_paths_gracefully(tmp_path: Path):
+    from controlled_text_transfer.core import _scan_source
+
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "a.py").write_text("print('x')\n", encoding="utf-8")
+
+    outside = tmp_path / "outside.py"
+    outside.write_text("outside", encoding="utf-8")
+
+    # Create a symlink pointing inside src
+    link_in = src / "link_in.py"
+    try:
+        link_in.symlink_to(src / "a.py")
+    except OSError:
+        pytest.skip("Symlinks not supported on platform")
+
+    # Create an ignored symlink
+    (src / ".cttignore").write_text("link_ignored*\n", encoding="utf-8")
+    link_ignored = src / "link_ignored.py"
+    try:
+        link_ignored.symlink_to(src / "a.py")
+    except OSError:
+        pass
+
+    report, _, _ = _scan_source(src, Policy())
+    reasons_by_path = {d.path: d.reasons for d in report.decisions}
+    assert "link_in.py" in reasons_by_path
+    assert "symlink_not_allowed" in reasons_by_path["link_in.py"]
+    if link_ignored.exists():
+        assert "link_ignored.py" in reasons_by_path
+        assert "ignored" in reasons_by_path["link_ignored.py"]
+
+
+def test_scan_source_handles_escaping_path_gracefully(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from controlled_text_transfer import core
+    from controlled_text_transfer.core import _scan_source
+
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / ".cttignore").write_text("link_ignored*\n", encoding="utf-8")
+    outside = tmp_path / "outside.py"
+    outside.write_text("outside", encoding="utf-8")
+    link_out = src / "link_out.py"
+    link_ignored = src / "link_ignored.py"
+    try:
+        link_out.symlink_to(outside)
+        link_ignored.symlink_to(outside)
+    except OSError:
+        pytest.skip("Symlinks not supported on platform")
+
+    # Mock _is_link to False for link_out and link_ignored
+    # so _safe_relative is invoked and raises TransferError
+    orig_is_link = core._is_link
+
+    def mock_is_link(p: Path) -> bool:
+        if p.name in {"link_out.py", "link_ignored.py"}:
+            return False
+        return orig_is_link(p)
+
+    monkeypatch.setattr(core, "_is_link", mock_is_link)
+    report, _, _ = _scan_source(src, Policy())
+    reasons_by_path = {d.path: d.reasons for d in report.decisions}
+    assert "link_out.py" in reasons_by_path
+    assert "path_escapes_root" in reasons_by_path["link_out.py"]
+    assert "link_ignored.py" in reasons_by_path
+    assert "ignored" in reasons_by_path["link_ignored.py"]
+
+
+def test_read_patterns_fallback_to_example_or_defaults(tmp_path: Path):
+    from controlled_text_transfer.core import DEFAULT_IGNORE_PATTERNS, _read_patterns
+
+    # No ignore file present -> returns DEFAULT_IGNORE_PATTERNS
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    assert _read_patterns(empty_dir, ".cttignore") == DEFAULT_IGNORE_PATTERNS
+
+    # .cttignore.example present -> returns example content
+    example_dir = tmp_path / "example"
+    example_dir.mkdir()
+    (example_dir / ".cttignore.example").write_text("custom_pattern/*\n", encoding="utf-8")
+    assert _read_patterns(example_dir, ".cttignore") == ["custom_pattern/*"]

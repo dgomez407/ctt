@@ -17,6 +17,44 @@ by `bash scripts/run.sh clean`.
 output is restricted to the top-level `reports/` directory to prevent
 generated files from being mistaken for source.
 
+## Initial Deployment & Self-Bootstrapping
+
+### Online Networks (PyPI Installation)
+
+For destination networks with internet access, install directly from [PyPI (`controlled-text-transfer`)](https://pypi.org/project/controlled-text-transfer/):
+
+```bash
+pip install controlled-text-transfer
+```
+
+### Air-Gapped / Offline Networks (Self-Bootstrapping)
+
+When transferring CTT to an isolated destination network that does not yet have CTT installed:
+
+1. **Self-Package on Source Network**:
+   ```text
+   bash scripts/run.sh bootstrap dist/ctt-bootstrap.zip
+   ```
+   Or using CLI:
+   ```text
+   ctt self-package dist/ctt-bootstrap.zip --format zip
+   ```
+
+2. **Transfer Across Boundary**:
+   Transfer `dist/ctt-bootstrap.zip` across the CDS boundary. All files end in `.txt` and comply with text policy rules.
+
+3. **Bootstrap Restore on Destination Network**:
+   On the destination host (which has Python 3.12+ installed but no CTT package):
+   ```text
+   unzip ctt-bootstrap.zip -d /tmp/ctt-bootstrap
+   python /tmp/ctt-bootstrap/bootstrap.py.txt /tmp/ctt-bootstrap /opt/ctt
+   ```
+
+4. **Install CTT**:
+   ```text
+   pip install /opt/ctt
+   ```
+
 ## Prepare
 
 1. Review `ctt.yaml` and `.cttignore`.
@@ -79,7 +117,7 @@ file before atomically publishing the destination.
 
 ## Archive formats
 
-Set `package_format` to one of `directory`, `zip`, `tar`, or `tar.gz`.
+Set `package_format` to one of `directory`, `zip`, `tar`, or `tgz`.
 Directory format publishes the requested directory. Archive formats publish
 only the corresponding archive after verifying its temporary canonical
 layout. Every artifact must still be scanned by surrounding controls.
@@ -95,6 +133,35 @@ layout. Every artifact must still be scanned by surrounding controls.
   transfer through.
 - Treat `generic-text-v1` as a compatibility baseline, not proof that a
   particular CDS will authorize the transfer.
+
+## Release preparation
+
+Before running a release:
+1. Update `CHANGELOG.md` to move unreleased items under `## [<version>] - YYYY-MM-DD`.
+2. Run `bash scripts/run.sh release <version>`.
+
+The release command validates `CHANGELOG.md` readiness, bumps `pyproject.toml` version via `uv`, updates the `README.md` header title, executes `check_release.py` and the full quality gate, creates the `chore(release): prepare v<version>` commit and `v<version>` tag, and validates the snapshot offline using `scripts/ctt-release-check.sh`.
+
+Publish online after verification:
+```text
+git push origin main
+git push origin v<version>
+```
+
+### Unrelease & Backout Procedure
+
+If last-minute corrections are needed before pushing:
+```text
+bash scripts/run.sh unrelease <version>
+```
+This deletes local tag `v<version>` and resets the `chore(release): prepare v<version>` commit (`git reset HEAD~1`), preserving modified files staged in your working directory for edits.
+
+If the tag was already pushed to remote origin before PyPI publication completes:
+```text
+git tag -d v<version>
+git push origin :refs/tags/v<version>
+```
+*(Note: Cancel the active GitHub Actions workflow if it has already started. If PyPI publication has already finished, version numbers are immutable and a patch bump `v<version+1>` must be prepared instead.)*
 
 ## Development environment cleanup
 

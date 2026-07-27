@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- `self-package` subcommand and core API to bundle CTT's own codebase into a `.txt`-only cross-domain transfer package.
+- Zero-dependency Python bootstrap restoration script (`src/controlled_text_transfer/bootstrap.py`) embedded in self-packages for initial deployment on unequipped destination hosts.
+- `bootstrap` subcommand in `scripts/run.sh` to generate self-bootstrapping transfer archives.
+- Live dynamic Shields.io metrics badges (PyPI version, PyPI license, Python versions, CI build status, Black, Ruff, mypy strict, and Bandit security scan) on `README.md`.
+- PyPI package URLs in `pyproject.toml` metadata and direct installation runbooks in `README.md`, `README-quickstart.md`, and `docs/operations.md`.
+- `release` and `unrelease` subcommands in `scripts/run.sh` to automate release preflight alignment, metadata validation, quality gates, git tagging, and local rollback operations.
+- Offline release snapshot validation helper (`scripts/ctt-release-check.sh`).
+- Comprehensive subcommand, flag, and utility reference guide in `scripts/README.md`.
+- Architecture Decision Record [ADR-013](docs/decisions/0013-release-alignment-and-rollback-operations.md) for release alignment and unrelease operations.
+
+### Changed
+
+- Replaced `tar.gz` package format with `tgz` format across core engine, CLI options, policy definitions, and documentation.
+- Improved archive suffix deduplication (`_resolve_package_destination`) and internal root directory formatting (`_clean_archive_root_name`) to prevent double extensions and suffix retention during archive extraction.
+
 ## [0.1.0] - 2026-07-25
 
 ### Added

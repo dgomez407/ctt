@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
-from .core import Policy, TransferError, diff, preflight, prepare, restore, verify
+from .core import Policy, TransferError, diff, preflight, prepare, restore, self_package, verify
 from .signing import ManifestSigner
 
 
@@ -74,6 +74,27 @@ def _parser() -> argparse.ArgumentParser:
         "--key-label",
         default="external-managed-key",
         help="record a non-secret signer label in the manifest",
+    )
+
+    self_package_parser = commands.add_parser(
+        "self-package", help="package CTT codebase into a .txt-only self-bootstrapping bundle"
+    )
+    _add_policy_option(self_package_parser)
+    _add_log_option(self_package_parser)
+    self_package_parser.add_argument(
+        "destination", type=Path, help="new self-bootstrap package path"
+    )
+    self_package_parser.add_argument(
+        "--source", type=Path, help="source directory to package (default: current directory)"
+    )
+    self_package_parser.add_argument(
+        "--format",
+        default="zip",
+        choices=["directory", "zip", "tar", "tgz"],
+        help="package output format (default: zip)",
+    )
+    self_package_parser.add_argument(
+        "--dry-run", action="store_true", help="validate without writing a package"
     )
 
     preflight_parser = commands.add_parser(
@@ -160,7 +181,17 @@ def main(
                     f"total bytes: {report.total_bytes}"
                 )
             return 0
-        if args.command == "prepare":
+        if args.command == "self-package":
+            m, _ = self_package(
+                args.destination,
+                source=args.source,
+                package_format=args.format,
+                policy=policy,
+                signer=signer,
+                dry_run=args.dry_run,
+                logger=log,
+            )
+        elif args.command == "prepare":
             report = preflight(args.source, policy)
             if args.json_report:
                 args.json_report.write_text(

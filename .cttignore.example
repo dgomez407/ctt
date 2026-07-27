@@ -10,3 +10,5 @@ dist/*
 build/*
 reports/*
 *.egg-info/*
+*.swp
+.*.swp

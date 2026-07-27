@@ -8,7 +8,7 @@ a = Analysis(
     ["src/controlled_text_transfer/__main__.py"],
     pathex=["src"],
     binaries=[],
-    datas=[],
+    datas=[("src/controlled_text_transfer/bootstrap.py", "controlled_text_transfer")],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
