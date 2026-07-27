@@ -14,6 +14,8 @@
 
 ### Security
 
+- Option injection guards and positional argument separators in `scripts/ctt-release-check.sh` and `scripts/check_release.py`.
+
 ## [0.2.0] - 2026-07-26
 
 ### Added

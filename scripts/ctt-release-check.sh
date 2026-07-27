@@ -37,6 +37,11 @@ repository="${1:-.}"
 requested_tag="${2:-}"
 release_ref="${3:-origin/main}"
 
+if [[ "$release_ref" == -* ]]; then
+    printf 'error: release ref must not start with a dash\n' >&2
+    exit 2
+fi
+
 if [[ ! -d "$repository" ]]; then
     printf 'error: repository directory does not exist: %s\n' "$repository" >&2
     exit 2
