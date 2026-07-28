@@ -59,7 +59,7 @@ strict = true
 warn_unreachable = true
 ignore_missing_imports = true
 [tool.pytest.ini_options]
-addopts = "--cov=controlled_text_transfer --cov-report=term-missing:skip-covered --cov-fail-under=100"
+addopts = "--cov=controlled_text_transfer --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=100"
 testpaths = ["tests"]
 
 [tool.coverage.run]

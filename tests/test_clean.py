@@ -17,6 +17,7 @@ def test_discover_targets_finds_only_reproducible_repository_artifacts(tmp_path:
         tmp_path / ".mypy_cache",
         tmp_path / ".ruff_cache",
         tmp_path / ".coverage",
+        tmp_path / "coverage.xml",
         tmp_path / "reports",
         tmp_path / "src" / "package.egg-info",
         tmp_path / "src" / "package" / "__pycache__",
