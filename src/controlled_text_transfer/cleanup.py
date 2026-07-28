@@ -18,6 +18,7 @@ TOP_LEVEL_ARTIFACTS = frozenset(
         ".mypy_cache",
         ".ruff_cache",
         ".coverage",
+        "coverage.xml",
         "reports",
     }
 )
